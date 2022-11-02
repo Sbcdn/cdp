@@ -1,5 +1,5 @@
 pub mod config;
-pub(crate) mod error;
+pub mod error;
 use super::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,

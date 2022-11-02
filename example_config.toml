@@ -1,0 +1,30 @@
+[PROVIDER]
+# DBSYNC | BLOCKFROST | KOIOS | CARB
+use = ["DBSYNC", "BLOCKFROST"]
+# SINGLE | REDUNDANT | MULTI | MULTIRED 
+mode = "REDUNDANT"
+# master provider
+master = ["DBSYNC"]
+# backup provider
+slave = ["BLOCKFROST"]
+
+[DBSYNC]
+# ip
+dbhost = ""
+# database port default 5432
+dbport = 5432
+# database user
+dbuser = "user"
+# database name
+database = "cexplorer"
+# ENV | FILE
+pw_mode = "ENV"
+# name of the password environment variable
+pw_env = "DBSYNC_PW"
+
+[BLOCKFROST]
+api_key = ""
+url = ""
+
+[ENV]
+DBSYNC_PW = "my_password"

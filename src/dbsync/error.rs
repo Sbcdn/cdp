@@ -20,7 +20,7 @@ pub enum DataProviderDBSyncError {
     #[error(transparent)]
     UTF8Error(#[from] std::string::FromUtf8Error),
     #[error(transparent)]
-    CSLCommonError(#[from] drasil_csl_common::error::CSLCommonError),
+    CSLCommonError(#[from] dcslc::error::CSLCommonError),
 }
 
 impl From<std::string::String> for DataProviderDBSyncError {

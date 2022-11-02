@@ -27,7 +27,7 @@ pub fn select_addr_of_first_transaction(
 pub async fn get_address_utxos(
     bfp: &BlockfrostProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderBlockfrostError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
     let mut utxos = Vec::<AddressUtxo>::new();
     utxos.extend(
         bfp.api
@@ -38,14 +38,14 @@ pub async fn get_address_utxos(
             })
             .await,
     );
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub async fn get_stake_address_utxos(
     bfp: &BlockfrostProvider,
     stake_addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderBlockfrostError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
     let addresses = bfp
         .api
         .accounts_addresses_all(stake_addr)
@@ -68,13 +68,13 @@ pub async fn get_stake_address_utxos(
         );
     }
 
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 pub async fn asset_utxos_on_addr(
     bfp: &BlockfrostProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderBlockfrostError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
     let mut utxos = Vec::<AddressUtxo>::new();
     utxos.extend(
         bfp.api
@@ -88,7 +88,7 @@ pub async fn asset_utxos_on_addr(
 
     // ToDo: Filter asset utxos and transform
 
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 pub async fn slot(bfp: &BlockfrostProvider) -> Result<i64, DataProviderBlockfrostError> {

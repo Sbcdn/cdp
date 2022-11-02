@@ -58,12 +58,12 @@ impl UnspentUtxo {
     pub fn to_txuo(
         &self,
         dbs: &DBSyncProvider,
-    ) -> Result<drasil_csl_common::TransactionUnspentOutput, DataProviderDBSyncError> {
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
         let input = cardano_serialization_lib::TransactionInput::new(
             &cardano_serialization_lib::crypto::TransactionHash::from_bytes(self.hash.clone())?,
             self.index as u32,
         );
-        let address = drasil_csl_common::addr_from_str(&self.address)?;
+        let address = dcslc::addr_from_str(&self.address)?;
         let coin = match self.value.to_u64() {
             Some(c) => c,
             None => {

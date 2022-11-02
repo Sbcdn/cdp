@@ -20,7 +20,7 @@ pub enum DataProviderError {
     #[error(transparent)]
     JSONError(#[from] serde_json::Error),
     #[error(transparent)]
-    CSLCommonError(#[from] drasil_csl_common::error::CSLCommonError),
+    CSLCommonError(#[from] dcslc::error::CSLCommonError),
 }
 
 impl From<std::string::String> for DataProviderError {

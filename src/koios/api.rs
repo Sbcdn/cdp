@@ -24,24 +24,24 @@ pub fn select_addr_of_first_transaction(
 pub fn get_address_utxos(
     bfp: &KoiosProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn get_stake_address_utxos(
     bfp: &KoiosProvider,
     stake_addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn asset_utxos_on_addr(
     bfp: &KoiosProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 pub fn slot(bfp: &KoiosProvider) -> Result<i64, DataProviderKoiosError> {

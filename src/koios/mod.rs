@@ -35,30 +35,21 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
     async fn wallet_utxos(
         &self,
         stake_addr: &str,
-    ) -> Result<
-        drasil_csl_common::TransactionUnspentOutputs,
-        crate::provider::error::DataProviderError,
-    > {
+    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
         Ok(api::get_stake_address_utxos(self, stake_addr)?)
     }
 
     async fn script_utxos(
         &self,
         addr: &str,
-    ) -> Result<
-        drasil_csl_common::TransactionUnspentOutputs,
-        crate::provider::error::DataProviderError,
-    > {
+    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
         Ok(api::get_address_utxos(self, addr)?)
     }
 
     async fn asset_utxos_on_addr(
         &self,
         addr: &str,
-    ) -> Result<
-        drasil_csl_common::TransactionUnspentOutputs,
-        crate::provider::error::DataProviderError,
-    > {
+    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
         Ok(api::asset_utxos_on_addr(self, addr)?)
     }
 
@@ -77,7 +68,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         crate::provider::error::DataProviderError,
     > {
         let str_addr = api::select_addr_of_first_transaction(self, stake_address_in)?;
-        Ok(drasil_csl_common::addr_from_str(&str_addr)?)
+        Ok(dcslc::addr_from_str(&str_addr)?)
     }
 
     async fn utxo_tokens(

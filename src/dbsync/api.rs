@@ -56,11 +56,11 @@ pub fn select_addr_of_first_transaction(
 pub fn get_address_utxos(
     dbs: &DBSyncProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderDBSyncError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::address.eq(addr))
         .load::<UnspentUtxo>(&mut dbs.connect()?)?;
-    let mut utxos = drasil_csl_common::TransactionUnspentOutputs::new();
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     for u in unspent {
         utxos.add(&u.to_txuo(dbs)?);
     }
@@ -71,12 +71,12 @@ pub fn get_address_utxos(
 pub fn get_stake_address_utxos(
     dbs: &DBSyncProvider,
     stake_addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderDBSyncError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::stake_address.eq(stake_addr))
         .filter(unspent_utxos::address_has_script.eq(false))
         .load::<UnspentUtxo>(&mut dbs.connect()?)?;
-    let mut utxos = drasil_csl_common::TransactionUnspentOutputs::new();
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     for u in unspent {
         utxos.add(&u.to_txuo(dbs)?);
     }
@@ -88,7 +88,7 @@ pub fn get_stake_address_utxos(
 pub fn asset_utxos_on_addr(
     dbs: &DBSyncProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderDBSyncError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
     let unspent_assets: Vec<UnspentUtxo> = unspent_utxos::table
         .inner_join(ma_tx_out::table.on(ma_tx_out::tx_out_id.eq(unspent_utxos::id)))
         .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
@@ -106,7 +106,7 @@ pub fn asset_utxos_on_addr(
         .filter(unspent_utxos::address.eq(addr))
         .load::<UnspentUtxo>(&mut dbs.connect()?)?;
 
-    let mut utxos = drasil_csl_common::TransactionUnspentOutputs::new();
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     unspent_assets.iter().for_each(|n| {
         utxos.add(
             &n.to_txuo(dbs)

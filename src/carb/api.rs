@@ -24,24 +24,24 @@ pub fn select_addr_of_first_transaction(
 pub fn get_address_utxos(
     bfp: &CarbProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn get_stake_address_utxos(
     bfp: &CarbProvider,
     stake_addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn asset_utxos_on_addr(
     bfp: &CarbProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 pub fn slot(bfp: &CarbProvider) -> Result<i64, DataProviderCarbError> {

@@ -6,7 +6,7 @@ use super::models::{
 };
 use async_trait::async_trait;
 use cardano_serialization_lib::address::Address;
-use drasil_csl_common::TransactionUnspentOutputs;
+use dcslc::TransactionUnspentOutputs;
 use error::DataProviderError;
 
 #[async_trait]

@@ -40,6 +40,7 @@ diesel = { version = "2.0.0", features = [
     "chrono",
     "64-column-tables",
     "r2d2",
+    "serde_json",
 ] }
 diesel-derive-enum = { version = "2.0.0-rc.0", features = ["postgres"] }
 bigdecimal = { version = "0.3.0", features = ["serde"] }

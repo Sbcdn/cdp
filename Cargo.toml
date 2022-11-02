@@ -13,7 +13,7 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 
 [dependencies]
 cardano-serialization-lib = "11.0.5"
-csl_common = { path = "/home/tp/drasil/codebase/drasil/libs/csl_common/" }
+csl_common = { git = "https://github.com/drasil-blockchain/csl-common.git", branch = "main" }
 cryptoxide = { git = "https://github.com/typed-io/cryptoxide.git", branch = "master", features = [
     "blake2",
 ] }

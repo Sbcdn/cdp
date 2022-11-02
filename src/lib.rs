@@ -9,4 +9,5 @@ pub mod provider;
 extern crate diesel;
 
 pub use dbsync::{Config, DBSyncProvider};
+pub use provider::error::DataProviderError;
 pub use provider::DataProvider;

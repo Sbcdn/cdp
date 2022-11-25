@@ -1,5 +1,5 @@
 use super::error::DataProviderDBSyncError;
-use super::models::{PoolHash, PoolRetire, UnspentUtxo};
+use super::models::{PoolHash, PoolRetire, UnspentUtxo, UtxoView};
 use super::schema::*;
 use crate::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
@@ -9,6 +9,7 @@ use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use diesel::prelude::*;
 /// get all tokens of an utxo
+
 pub fn get_utxo_tokens(
     dbs: &DBSyncProvider,
     utxo_id: i64,
@@ -57,6 +58,89 @@ pub fn get_address_utxos(
     dbs: &DBSyncProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let unspent = utxo_view::table
+        .filter(utxo_view::address.eq(addr))
+        .load::<UtxoView>(&mut dbs.connect()?)?;
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
+    for u in unspent {
+        utxos.add(&u.to_txuo(dbs)?);
+    }
+    Ok(utxos)
+}
+
+/// get all utxos of an address
+pub fn get_stake_address_utxos(
+    dbs: &DBSyncProvider,
+    saddr: &str,
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let unspent = utxo_view::table
+        .left_join(
+            stake_address::table.on(utxo_view::stake_address_id.eq(stake_address::id.nullable())),
+        )
+        .filter(stake_address::view.eq(saddr))
+        .select((
+            utxo_view::id,
+            utxo_view::tx_id,
+            utxo_view::index,
+            utxo_view::address,
+            utxo_view::address_raw,
+            utxo_view::address_has_script,
+            utxo_view::payment_cred,
+            utxo_view::stake_address_id,
+            utxo_view::value,
+            utxo_view::data_hash,
+            utxo_view::inline_datum_id,
+            utxo_view::reference_script_id,
+        ))
+        .load::<UtxoView>(&mut dbs.connect()?)?;
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
+    for u in unspent {
+        utxos.add(&u.to_txuo(dbs)?);
+    }
+    Ok(utxos)
+}
+
+pub fn asset_utxos_on_addr(
+    dbs: &DBSyncProvider,
+    addr: &str,
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let unspent_assets: Vec<UtxoView> = utxo_view::table
+        .inner_join(ma_tx_out::table.on(ma_tx_out::tx_out_id.eq(utxo_view::tx_id)))
+        .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+        .filter(utxo_view::address.eq(addr))
+        .select((
+            utxo_view::id,
+            utxo_view::tx_id,
+            utxo_view::index,
+            utxo_view::address,
+            utxo_view::address_raw,
+            utxo_view::address_has_script,
+            utxo_view::payment_cred,
+            utxo_view::stake_address_id,
+            utxo_view::value,
+            utxo_view::data_hash,
+            utxo_view::inline_datum_id,
+            utxo_view::reference_script_id,
+        ))
+        .load::<UtxoView>(&mut dbs.connect()?)?;
+
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
+    unspent_assets.iter().for_each(|n| {
+        utxos.add(
+            &n.to_txuo(dbs)
+                .expect("Could not convert into TransactionUnspentOutput"),
+        )
+    });
+
+    Ok(utxos)
+}
+
+/// get all utxos of an address
+#[deprecated(since = "0.1.1")]
+pub fn get_address_utxos_dep(
+    dbs: &DBSyncProvider,
+    addr: &str,
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::address.eq(addr))
         .load::<UnspentUtxo>(&mut dbs.connect()?)?;
@@ -68,7 +152,8 @@ pub fn get_address_utxos(
 }
 
 /// Get all utxos of a stake address
-pub fn get_stake_address_utxos(
+#[deprecated(since = "0.1.1")]
+pub fn get_stake_address_utxos_dep(
     dbs: &DBSyncProvider,
     stake_addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
@@ -85,7 +170,8 @@ pub fn get_stake_address_utxos(
 }
 
 /// Get all utxos of a stake address
-pub fn asset_utxos_on_addr(
+#[deprecated(since = "0.1.1")]
+pub fn asset_utxos_on_addr_dep(
     dbs: &DBSyncProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {

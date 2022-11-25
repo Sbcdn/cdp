@@ -29,6 +29,24 @@ table! {
         stake_address -> Nullable<Varchar>,
     }
 }
+
+table! {
+    utxo_view (id){
+        id -> Int8,
+        tx_id -> Int8,
+        index -> Int2,
+        address -> Varchar,
+        address_raw -> Bytea,
+        address_has_script -> Bool,
+        payment_cred -> Bytea,
+        stake_address_id -> Nullable<Int8>,
+        value -> Numeric,
+        data_hash -> Nullable<Bytea>,
+        inline_datum_id -> Nullable<Int8>,
+        reference_script_id -> Nullable<Int8>,
+    }
+}
+
 table! {
     ada_pots (id) {
         id -> Int8,
@@ -96,6 +114,7 @@ table! {
         hash -> Bytea,
         tx_id -> Int8,
         value -> Nullable<Jsonb>,
+        bytes -> Bytea,
     }
 }
 
@@ -609,6 +628,7 @@ joinable!(withdrawal -> tx (tx_id));
 
 allow_tables_to_appear_in_same_query!(
     unspent_utxos,
+    utxo_view,
     ada_pots,
     admin_user,
     block,

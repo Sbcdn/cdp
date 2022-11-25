@@ -5,6 +5,9 @@ use crate::DBSyncProvider;
 use super::error::DataProviderDBSyncError;
 use super::schema::*;
 use bigdecimal::{BigDecimal, ToPrimitive};
+use cardano_serialization_lib::crypto::DataHash;
+use cardano_serialization_lib::plutus::PlutusScript;
+use cardano_serialization_lib::{NativeScript, ScriptRef};
 use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::sql_types::{Array, BigInt, Float8, Int4, Jsonb, Numeric};
@@ -13,32 +16,48 @@ use diesel_derive_enum::DbEnum;
 #[derive(Debug, Clone, DbEnum)]
 #[DieselTypePath = "crate::dbsync::schema::sql_types::Syncstatetype"]
 pub enum Syncstatetype {
+    #[db_rename = "lagging"]
     Lagging,
+    #[db_rename = "following"]
     Following,
 }
 #[derive(Debug, Clone, DbEnum)]
 #[DieselTypePath = "crate::dbsync::schema::sql_types::Scriptpurposetype"]
 pub enum Scriptpurposetype {
+    #[db_rename = "spend"]
     Spend,
+    #[db_rename = "mint"]
     Mint,
+    #[db_rename = "cert"]
     Cert,
+    #[db_rename = "reward"]
     Reward,
 }
 #[derive(Debug, Clone, DbEnum)]
 #[DieselTypePath = "crate::dbsync::schema::sql_types::Rewardtype"]
 pub enum Rewardtype {
+    #[db_rename = "leader"]
     Leader,
+    #[db_rename = "member"]
     Member,
+    #[db_rename = "reserves"]
     Reserves,
+    #[db_rename = "treasury"]
     Treasury,
+    #[db_rename = "refund"]
     Refund,
 }
 #[derive(Debug, Clone, DbEnum)]
 #[DieselTypePath = "crate::dbsync::schema::sql_types::Scripttype"]
 pub enum Scripttype {
+    #[db_rename = "multisig"]
     Multisig,
+    #[db_rename = "timelock"]
     Tiemlock,
-    Plutus,
+    #[db_rename = "plutusV1"]
+    PlutusV1,
+    #[db_rename = "plutusV2"]
+    PlutusV2,
 }
 
 #[derive(Queryable, Debug)]
@@ -125,6 +144,130 @@ impl UnspentUtxo {
 }
 
 #[derive(Queryable, Debug)]
+pub struct UtxoView {
+    pub id: i64,
+    pub tx_id: i64,
+    pub index: i16,
+    pub address: String,
+    pub address_raw: Vec<u8>,
+    pub address_has_script: bool,
+    pub payment_cred: Vec<u8>,
+    pub stake_address_id: Option<i64>,
+    pub value: BigDecimal,
+    pub data_hash: Option<Vec<u8>>,
+    pub inline_datum_id: Option<i64>,
+    pub reference_script_id: Option<i64>,
+}
+
+impl UtxoView {
+    pub fn to_txuo(
+        &self,
+        dbs: &DBSyncProvider,
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
+        use super::schema::*;
+
+        let tx = tx::table
+            .filter(tx::id.eq(&self.tx_id))
+            .first::<Tx>(&mut dbs.connect()?)?;
+
+        let input = cardano_serialization_lib::TransactionInput::new(
+            &cardano_serialization_lib::crypto::TransactionHash::from_bytes(tx.hash.clone())?,
+            self.index as u32,
+        );
+        let address = dcslc::addr_from_str(&self.address)?;
+        let coin = match self.value.to_u64() {
+            Some(c) => c,
+            None => {
+                return Err(DataProviderDBSyncError::Custom(
+                    format!(
+                        "Could not determinte Lovelace on Utxo:  {:?}#{:?}",
+                        input, self.index
+                    )
+                    .to_string(),
+                ))
+            }
+        };
+
+        let mut amount = cardano_serialization_lib::utils::Value::new(
+            &cardano_serialization_lib::utils::to_bignum(coin),
+        );
+
+        let tokens = super::api::get_utxo_tokens(&dbs, self.tx_id)?;
+        let mut ma = cardano_serialization_lib::MultiAsset::new();
+        for tok in tokens {
+            match ma.get(&cardano_serialization_lib::PolicyID::from_bytes(
+                tok.policy.clone(),
+            )?) {
+                Some(mut asset) => {
+                    asset.insert(
+                        &cardano_serialization_lib::AssetName::new(tok.name)?,
+                        &cardano_serialization_lib::utils::to_bignum(
+                            tok.quantity.to_u64().unwrap(),
+                        ),
+                    );
+                    ma.insert(
+                        &cardano_serialization_lib::PolicyID::from_bytes(tok.policy)?,
+                        &asset,
+                    );
+                }
+                None => {
+                    let mut a = cardano_serialization_lib::Assets::new();
+                    a.insert(
+                        &cardano_serialization_lib::AssetName::new(tok.name)?,
+                        &cardano_serialization_lib::utils::to_bignum(
+                            tok.quantity.to_u64().unwrap(),
+                        ),
+                    );
+                    ma.insert(
+                        &cardano_serialization_lib::PolicyID::from_bytes(tok.policy)?,
+                        &a,
+                    );
+                }
+            }
+        }
+        if ma.len() > 0 {
+            amount.set_multiasset(&ma)
+        }
+
+        let mut output = cardano_serialization_lib::TransactionOutput::new(&address, &amount);
+
+        if let Some(hash) = &self.data_hash {
+            output.set_data_hash(&(DataHash::from_bytes(hash.clone())?));
+            if let Some(_) = self.inline_datum_id {
+                let datum = datum::table
+                    .filter(datum::hash.eq(hash))
+                    .first::<Datum>(&mut dbs.connect()?)?;
+                let pdatum =
+                    cardano_serialization_lib::plutus::PlutusData::from_bytes(datum.bytes)?;
+
+                output.set_plutus_data(&pdatum);
+            }
+        }
+
+        if let Some(id) = self.reference_script_id {
+            let script = script::table
+                .filter(script::id.eq(id))
+                .first::<Script>(&mut dbs.connect()?)?;
+
+            let scr = match script.type_ {
+                Scripttype::Multisig | Scripttype::Tiemlock => ScriptRef::new_native_script(
+                    &NativeScript::from_json(&script.json.unwrap().to_string())?,
+                ),
+                Scripttype::PlutusV1 => {
+                    ScriptRef::new_plutus_script(&PlutusScript::from_bytes(script.bytes.unwrap())?)
+                }
+                Scripttype::PlutusV2 => ScriptRef::new_plutus_script(&PlutusScript::from_bytes_v2(
+                    script.bytes.unwrap(),
+                )?),
+            };
+            output.set_script_ref(&scr)
+        }
+
+        Ok(cardano_serialization_lib::utils::TransactionUnspentOutput::new(&input, &output))
+    }
+}
+
+#[derive(Queryable, Debug)]
 pub struct AdaPot {
     pub id: i64,
     pub slot_no: i32,
@@ -185,7 +328,8 @@ pub struct Datum {
     pub id: i64,
     pub hash: Vec<u8>,
     pub tx_id: i64,
-    pub value: Option<Jsonb>,
+    pub value: Option<serde_json::Value>,
+    pub bytes: Vec<u8>,
 }
 
 #[derive(Queryable, Debug)]
@@ -514,7 +658,7 @@ pub struct Script {
     pub tx_id: i64,
     pub hash: Vec<u8>,
     pub type_: Scripttype,
-    pub json: Option<Jsonb>,
+    pub json: Option<serde_json::Value>,
     pub bytes: Option<Vec<u8>>,
     pub serialised_size: Option<i32>,
 }

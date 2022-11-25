@@ -16,8 +16,8 @@ pub fn get_utxo_tokens(
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderDBSyncError> {
     let multi_assets = multi_asset::table
         .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
-        .left_join(unspent_utxos::table.on(ma_tx_out::tx_out_id.eq(unspent_utxos::id)))
-        .filter(unspent_utxos::id.eq(utxo_id))
+        .left_join(utxo_view::table.on(ma_tx_out::tx_out_id.eq(utxo_view::tx_id)))
+        .filter(utxo_view::tx_id.eq(utxo_id))
         //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
         .select((
             multi_asset::id,

@@ -25,6 +25,17 @@ pub fn select_addr_of_first_transaction(
 }
 
 /// get all utxos of an address
+pub fn utxo_by_dataumhash(
+    bfp: &BlockfrostProvider,
+    addr: &str,
+    datumhash: &Vec<u8>,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderBlockfrostError> {
+    Err(DataProviderBlockfrostError::Custom(
+        "not implemented".to_string(),
+    ))
+}
+
+/// get all utxos of an address
 pub async fn get_address_utxos(
     bfp: &BlockfrostProvider,
     addr: &str,

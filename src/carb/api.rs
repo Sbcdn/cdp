@@ -22,6 +22,15 @@ pub fn select_addr_of_first_transaction(
 }
 
 /// get all utxos of an address
+pub fn utxo_by_dataumhash(
+    bfp: &CarbProvider,
+    addr: &str,
+    datumhash: &Vec<u8>,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderCarbError> {
+    Err(DataProviderCarbError::Custom("not implemented".to_string()))
+}
+
+/// get all utxos of an address
 pub fn get_address_utxos(
     bfp: &CarbProvider,
     addr: &str,

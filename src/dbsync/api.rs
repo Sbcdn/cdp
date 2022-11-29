@@ -94,6 +94,19 @@ pub fn get_address_utxos(
 }
 
 /// get all utxos of an address
+pub fn utxo_by_dataumhash(
+    dbs: &DBSyncProvider,
+    addr: &str,
+    datumhash: &Vec<u8>,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
+    let unspent = utxo_view::table
+        .filter(utxo_view::address.eq(addr))
+        .filter(utxo_view::data_hash.eq(datumhash))
+        .first::<UtxoView>(&mut dbs.connect()?)?;
+    unspent.to_txuo(dbs)
+}
+
+/// get all utxos of an address
 pub fn get_stake_address_utxos(
     dbs: &DBSyncProvider,
     saddr: &str,

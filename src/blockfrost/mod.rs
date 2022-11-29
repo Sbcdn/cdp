@@ -87,6 +87,15 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(dcslc::addr_from_str(&str_addr)?)
     }
 
+    async fn utxo_by_dataumhash(
+        &self,
+        addr: &str,
+        datumhash: &Vec<u8>,
+    ) -> Result<dcslc::TransactionUnspentOutput, crate::provider::error::DataProviderError> {
+        let utxo = api::utxo_by_dataumhash(self, addr, datumhash)?;
+        Ok(utxo)
+    }
+
     async fn utxo_tokens(
         &self,
         tx_id: i64,

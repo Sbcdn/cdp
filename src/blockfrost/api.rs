@@ -11,7 +11,8 @@ use blockfrost::{AccountAddress, AddressUtxo};
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
     bfp: &BlockfrostProvider,
-    utxo_id: i64,
+    tx_id: i64,
+    tx_index: i16,
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderBlockfrostError> {
     todo!()
 }

@@ -73,10 +73,11 @@ impl super::provider::CardanoDataProvider for CarbProvider {
 
     async fn utxo_tokens(
         &self,
-        utxo_id: i64,
+        tx_id: i64,
+        tx_index: i16,
     ) -> Result<Vec<crate::models::CardanoNativeAssetView>, crate::provider::error::DataProviderError>
     {
-        Ok(api::get_utxo_tokens(self, utxo_id)?)
+        Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
     }
 
     async fn slot(&self) -> Result<i64, crate::provider::error::DataProviderError> {

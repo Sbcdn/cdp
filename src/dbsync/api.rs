@@ -12,13 +12,37 @@ use diesel::prelude::*;
 
 pub fn get_utxo_tokens(
     dbs: &DBSyncProvider,
-    utxo_id: i64,
+    tx_id: i64,
+    tx_index: i16,
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderDBSyncError> {
     let multi_assets = multi_asset::table
         .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .inner_join(tx_out::table.on(tx_out::id.eq(ma_tx_out::tx_out_id)))
         .inner_join(utxo_view::table.on(utxo_view::tx_id.eq(tx_out::tx_id)))
-        .filter(utxo_view::tx_id.eq(utxo_id))
+        .filter(utxo_view::tx_id.eq(tx_id))
+        .filter(utxo_view::index.eq(tx_index))
+        //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
+        .select((
+            multi_asset::id,
+            multi_asset::policy,
+            multi_asset::name,
+            multi_asset::fingerprint,
+            ma_tx_out::quantity,
+        ))
+        .load::<CardanoNativeAssetView>(&mut dbs.connect()?)?;
+    Ok(multi_assets)
+}
+
+#[deprecated(since = "0.1.1")]
+pub fn get_utxo_tokens_dep(
+    dbs: &DBSyncProvider,
+    utxo_id: i64,
+) -> Result<Vec<CardanoNativeAssetView>, DataProviderDBSyncError> {
+    let multi_assets = multi_asset::table
+        .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+        .inner_join(tx_out::table.on(tx_out::id.eq(ma_tx_out::tx_out_id)))
+        .inner_join(unspent_utxos::table.on(unspent_utxos::tx_id.eq(tx_out::tx_id)))
+        .filter(unspent_utxos::id.eq(utxo_id))
         //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
         .select((
             multi_asset::id,

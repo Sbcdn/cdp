@@ -60,6 +60,7 @@ pub enum Scripttype {
     PlutusV2,
 }
 
+#[deprecated(since = "0.1.1")]
 #[derive(Queryable, Debug)]
 pub struct UnspentUtxo {
     pub id: i64,
@@ -73,6 +74,7 @@ pub struct UnspentUtxo {
     pub stake_address: Option<String>,
 }
 
+#[deprecated(since = "0.1.1")]
 impl UnspentUtxo {
     pub fn to_txuo(
         &self,
@@ -100,7 +102,7 @@ impl UnspentUtxo {
             &cardano_serialization_lib::utils::to_bignum(coin),
         );
 
-        let tokens = super::api::get_utxo_tokens(&dbs, self.id)?;
+        let tokens = super::api::get_utxo_tokens_dep(&dbs, self.id)?;
         let mut ma = cardano_serialization_lib::MultiAsset::new();
         for tok in tokens {
             match ma.get(&cardano_serialization_lib::PolicyID::from_bytes(
@@ -192,7 +194,7 @@ impl UtxoView {
             &cardano_serialization_lib::utils::to_bignum(coin),
         );
 
-        let tokens = super::api::get_utxo_tokens(&dbs, self.tx_id)?;
+        let tokens = super::api::get_utxo_tokens(&dbs, self.tx_id, self.index)?;
         let mut ma = cardano_serialization_lib::MultiAsset::new();
         for tok in tokens {
             match ma.get(&cardano_serialization_lib::PolicyID::from_bytes(

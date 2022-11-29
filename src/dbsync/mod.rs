@@ -83,9 +83,10 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
     async fn utxo_tokens(
         &self,
         utxo_id: i64,
+        index: i16,
     ) -> Result<Vec<crate::models::CardanoNativeAssetView>, crate::provider::error::DataProviderError>
     {
-        Ok(api::get_utxo_tokens(self, utxo_id)?)
+        Ok(api::get_utxo_tokens(self, utxo_id, index)?)
     }
 
     async fn slot(&self) -> Result<i64, crate::provider::error::DataProviderError> {

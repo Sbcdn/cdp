@@ -39,7 +39,8 @@ pub trait CardanoDataProvider {
     /// return the Cardano Native Tokens on an utxo using the dbsync txout-id
     async fn utxo_tokens(
         &self,
-        utxo_id: i64,
+        tx_id: i64,
+        tx_index: i16,
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>;
     /// returns the latest slot
     async fn slot(&self) -> Result<i64, DataProviderError>;
@@ -154,9 +155,10 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
 
     async fn utxo_tokens(
         &self,
-        utxo_id: i64,
+        tx_id: i64,
+        tx_index: i16,
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError> {
-        self.provider().utxo_tokens(utxo_id).await
+        self.provider().utxo_tokens(tx_id, tx_index).await
     }
 
     async fn slot(&self) -> Result<i64, DataProviderError> {

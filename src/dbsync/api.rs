@@ -18,7 +18,7 @@ pub fn get_utxo_tokens(
     let multi_assets = multi_asset::table
         .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .inner_join(tx_out::table.on(tx_out::id.eq(ma_tx_out::tx_out_id)))
-        .inner_join(utxo_view::table.on(utxo_view::tx_id.eq(tx_out::tx_id)))
+        .inner_join(utxo_view::table.on(utxo_view::id.eq(tx_out::id)))
         .filter(utxo_view::tx_id.eq(tx_id))
         .filter(utxo_view::index.eq(tx_index))
         //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))

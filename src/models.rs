@@ -64,9 +64,9 @@ pub struct StakeRegistrationView {
     pub epoch: i32,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, Clone)]
 pub struct CDPDatum {
-    hash: Vec<u8>,
-    json: Option<serde_json::Value>,
-    bytes: Vec<u8>,
+    pub hash: Vec<u8>,
+    pub json: Option<serde_json::Value>,
+    pub bytes: Vec<u8>,
 }

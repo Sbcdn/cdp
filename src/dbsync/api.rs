@@ -274,7 +274,7 @@ pub fn find_datums_for_tx(
     dbs: &DBSyncProvider,
     txid: &Vec<u8>,
 ) -> Result<Vec<crate::models::CDPDatum>, DataProviderDBSyncError> {
-    let mut datums: Vec<_> = datum::table
+    let mut datums = datum::table
         .inner_join(
             tx_out::table.on(tx_out::data_hash
                 .eq(datum::hash.nullable())
@@ -283,35 +283,40 @@ pub fn find_datums_for_tx(
         .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
         .filter(tx::hash.eq(txid))
         .select((datum::hash, datum::value.nullable(), datum::bytes))
-        .load::<crate::models::CDPDatum>(&mut dbs.connect()?)?;
+        .load::<crate::models::CDPDatum>(&mut dbs.connect()?);
 
-    if datums.is_empty() {
-        let r: (i64, i32) = redeemer::table
-            .inner_join(tx::table.on(tx::id.eq(redeemer::tx_id)))
-            .filter(tx::hash.eq(txid))
-            .select((redeemer::tx_id, redeemer::index))
-            .first::<(i64, i32)>(&mut dbs.connect()?)?;
-
-        let t: (Option<Vec<u8>>, Option<i64>) = tx_out::table
-            .inner_join(tx_in::table.on(tx_in::tx_out_id.eq(tx_out::tx_id)))
-            .filter(tx_in::tx_in_id.eq(r.0))
-            .filter(tx_in::tx_out_index.eq(r.1 as i16))
-            .filter(tx_out::data_hash.is_not_null())
-            .select((
-                tx_out::data_hash.nullable(),
-                tx_out::inline_datum_id.nullable(),
-            ))
-            .first::<(Option<Vec<u8>>, Option<i64>)>(&mut dbs.connect()?)?;
-
-        datums = datum::table
-            .filter(diesel::BoolExpressionMethods::or(
-                datum::hash.eq(t.0.unwrap()),
-                datum::id.eq(t.1.unwrap()),
-            ))
-            .select((datum::hash, datum::value.nullable(), datum::bytes))
-            .load::<crate::models::CDPDatum>(&mut dbs.connect()?)?;
+    if let Ok(o) = datums {
+        if !o.is_empty() {
+            return Ok(o);
+        }
     }
-    Ok(datums)
+
+    let r: (i64, i32) = redeemer::table
+        .inner_join(tx::table.on(tx::id.eq(redeemer::tx_id)))
+        .filter(tx::hash.eq(txid))
+        .select((redeemer::tx_id, redeemer::index))
+        .first::<(i64, i32)>(&mut dbs.connect()?)?;
+
+    let t: (Option<Vec<u8>>, Option<i64>) = tx_out::table
+        .inner_join(tx_in::table.on(tx_in::tx_out_id.eq(tx_out::tx_id)))
+        .filter(tx_in::tx_in_id.eq(r.0))
+        .filter(tx_in::tx_out_index.eq(r.1 as i16))
+        .filter(tx_out::data_hash.is_not_null())
+        .select((
+            tx_out::data_hash.nullable(),
+            tx_out::inline_datum_id.nullable(),
+        ))
+        .first::<(Option<Vec<u8>>, Option<i64>)>(&mut dbs.connect()?)?;
+
+    datums = datum::table
+        .filter(diesel::BoolExpressionMethods::or(
+            datum::hash.eq(t.0.unwrap()),
+            datum::id.eq(t.1.unwrap()),
+        ))
+        .select((datum::hash, datum::value.nullable(), datum::bytes))
+        .load::<crate::models::CDPDatum>(&mut dbs.connect()?);
+
+    Ok(datums?)
 }
 
 pub fn slot(dbs: &DBSyncProvider) -> Result<i64, DataProviderDBSyncError> {

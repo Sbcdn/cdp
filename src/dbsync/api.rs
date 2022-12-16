@@ -106,6 +106,34 @@ pub fn utxo_by_dataumhash(
     unspent.to_txuo(dbs)
 }
 
+/// get utxos by hash and index
+pub fn utxo_by_txid(
+    dbs: &DBSyncProvider,
+    txhash: &Vec<u8>,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
+    let unspent = utxo_view::table
+        .inner_join(tx::table.on(tx::id.eq(utxo_view::tx_id)))
+        .filter(tx::hash.eq(txhash))
+        .filter(utxo_view::index.eq(index))
+        .select((
+            utxo_view::id,
+            utxo_view::tx_id,
+            utxo_view::index,
+            utxo_view::address,
+            utxo_view::address_raw,
+            utxo_view::address_has_script,
+            utxo_view::payment_cred,
+            utxo_view::stake_address_id,
+            utxo_view::value,
+            utxo_view::data_hash,
+            utxo_view::inline_datum_id,
+            utxo_view::reference_script_id,
+        ))
+        .first::<UtxoView>(&mut dbs.connect()?)?;
+    unspent.to_txuo(dbs)
+}
+
 /// get all utxos of an address
 pub fn get_stake_address_utxos(
     dbs: &DBSyncProvider,

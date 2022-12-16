@@ -30,6 +30,15 @@ pub fn utxo_by_dataumhash(
     Err(DataProviderCarbError::Custom("not implemented".to_string()))
 }
 
+/// returns Utxo of a certain datumhash on an address
+pub fn utxo_by_txid(
+    bfp: &CarbProvider,
+    txhash: &Vec<u8>,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderCarbError> {
+    Err(DataProviderCarbError::Custom("not implemented".to_string()))
+}
+
 /// get all utxos of an address
 pub fn get_address_utxos(
     bfp: &CarbProvider,

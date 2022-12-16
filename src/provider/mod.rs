@@ -37,11 +37,16 @@ pub trait CardanoDataProvider {
         stake_address_in: &str,
     ) -> Result<Address, DataProviderError>;
     /// returns Utxo of a certain datumhash on an address
-    /// get all utxos of an address
     async fn utxo_by_dataumhash(
         &self,
         addr: &str,
         datumhash: &Vec<u8>,
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError>;
+    /// returns Utxo of a certain datumhash on an address
+    async fn utxo_by_txid(
+        &self,
+        txhash: &Vec<u8>,
+        index: i16,
     ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError>;
     /// return the Cardano Native Tokens on an utxo using the dbsync txout-id
     async fn utxo_tokens(
@@ -159,6 +164,15 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
             .first_transaction_from_stake_addr(stake_address_in)
             .await
     }
+    /// returns Utxo of a certain datumhash on an address
+    async fn utxo_by_txid(
+        &self,
+        txhash: &Vec<u8>,
+        index: i16,
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
+        self.provider().utxo_by_txid(txhash, index).await
+    }
+
     /// get all utxos of an address
     async fn utxo_by_dataumhash(
         &self,

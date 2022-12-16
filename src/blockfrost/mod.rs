@@ -96,6 +96,16 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(utxo)
     }
 
+    /// returns Utxo of a certain datumhash on an address
+    async fn utxo_by_txid(
+        &self,
+        txhash: &Vec<u8>,
+        index: i16,
+    ) -> Result<dcslc::TransactionUnspentOutput, crate::provider::error::DataProviderError> {
+        let utxo = api::utxo_by_txid(self, txhash, index)?;
+        Ok(utxo)
+    }
+
     async fn utxo_tokens(
         &self,
         tx_id: i64,

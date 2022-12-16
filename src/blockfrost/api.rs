@@ -35,6 +35,17 @@ pub fn utxo_by_dataumhash(
     ))
 }
 
+/// returns Utxo of a certain datumhash on an address
+pub fn utxo_by_txid(
+    bfp: &BlockfrostProvider,
+    txhash: &Vec<u8>,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderBlockfrostError> {
+    Err(DataProviderBlockfrostError::Custom(
+        "not implemented".to_string(),
+    ))
+}
+
 /// get all utxos of an address
 pub async fn get_address_utxos(
     bfp: &BlockfrostProvider,

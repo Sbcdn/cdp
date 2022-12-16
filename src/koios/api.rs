@@ -33,6 +33,17 @@ pub fn get_utxo_by_dataumhash(
 }
 
 /// get all utxos of an address
+pub fn utxo_by_txid(
+    bfp: &KoiosProvider,
+    txhash: &Vec<u8>,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderKoiosError> {
+    Err(DataProviderKoiosError::Custom(
+        "not implemented".to_string(),
+    ))
+}
+
+/// get all utxos of an address
 pub fn get_address_utxos(
     bfp: &KoiosProvider,
     addr: &str,

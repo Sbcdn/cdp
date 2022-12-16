@@ -756,6 +756,8 @@ pub struct TxOut {
     pub stake_address_id: Option<i64>,
     pub value: BigDecimal,
     pub data_hash: Option<Vec<u8>>,
+    pub inline_datum_id: Option<i64>,
+    pub reference_script_id: Option<i64>,
 }
 
 #[derive(Queryable, Debug)]

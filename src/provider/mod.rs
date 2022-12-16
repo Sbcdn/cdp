@@ -1,5 +1,7 @@
 pub mod config;
 pub mod error;
+use crate::models::CDPDatum;
+
 use super::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
@@ -54,6 +56,8 @@ pub trait CardanoDataProvider {
         tx_id: i64,
         tx_index: i16,
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>;
+    /// find all datums included in this tx
+    async fn find_datums_for_tx(&self, txid: &Vec<u8>) -> Result<Vec<CDPDatum>, DataProviderError>;
     /// returns the latest slot
     async fn slot(&self) -> Result<i64, DataProviderError>;
     /// return an Vector containing all stake addresses and their staked amount for the given epoch and pool
@@ -189,6 +193,9 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         self.provider().utxo_tokens(tx_id, tx_index).await
     }
 
+    async fn find_datums_for_tx(&self, txid: &Vec<u8>) -> Result<Vec<CDPDatum>, DataProviderError> {
+        self.provider().find_datums_for_tx(txid).await
+    }
     async fn slot(&self) -> Result<i64, DataProviderError> {
         self.provider().slot().await
     }

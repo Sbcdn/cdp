@@ -398,7 +398,17 @@ table! {
         purpose -> crate::dbsync::schema::sql_types::Scriptpurposetype,
         index -> Int4,
         script_hash -> Nullable<Bytea>,
-        datum_id -> Int8,
+        redeemer_data_id -> Int8,
+    }
+}
+
+table! {
+    redeemer_data (id) {
+        id -> Int8,
+        hash -> Bytea,
+        tx_id -> Int8,
+        value -> Jsonb,
+        bytes -> Bytea,
     }
 }
 
@@ -554,6 +564,8 @@ table! {
         stake_address_id -> Nullable<Int8>,
         value -> Numeric,
         data_hash -> Nullable<Bytea>,
+        inline_datum_id -> Nullable<Int8>,
+        reference_script_id -> Nullable<Int8>,
     }
 }
 
@@ -601,7 +613,7 @@ joinable!(pool_update -> pool_hash (hash_id));
 joinable!(pool_update -> pool_metadata_ref (meta_id));
 joinable!(pool_update -> tx (registered_tx_id));
 joinable!(pot_transfer -> tx (tx_id));
-joinable!(redeemer -> datum (datum_id));
+joinable!(redeemer -> redeemer_data (id));
 joinable!(redeemer -> tx (tx_id));
 joinable!(reserve -> stake_address (addr_id));
 joinable!(reserve -> tx (tx_id));

@@ -3,7 +3,7 @@ use blockfrost::stream::StreamExt;
 use super::error::DataProviderBlockfrostError;
 use super::BlockfrostProvider;
 use crate::models::{
-    CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 use blockfrost::{AccountAddress, AddressUtxo};
@@ -112,6 +112,13 @@ pub async fn asset_utxos_on_addr(
     // ToDo: Filter asset utxos and transform
 
     Ok(dcslc::TransactionUnspentOutputs::new())
+}
+
+pub fn find_datums_for_tx(
+    bfp: &BlockfrostProvider,
+    txid: &Vec<u8>,
+) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+    todo!();
 }
 
 pub async fn slot(bfp: &BlockfrostProvider) -> Result<i64, DataProviderBlockfrostError> {

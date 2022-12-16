@@ -1,3 +1,5 @@
+use crate::models::CDPDatum;
+
 use self::error::DataProviderBlockfrostError;
 use async_trait::async_trait;
 use blockfrost::{load, BlockFrostApi};
@@ -113,6 +115,13 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     ) -> Result<Vec<crate::models::CardanoNativeAssetView>, crate::provider::error::DataProviderError>
     {
         Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
+    }
+
+    async fn find_datums_for_tx(
+        &self,
+        txid: &Vec<u8>,
+    ) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+        Ok(api::find_datums_for_tx(self, txid)?)
     }
 
     async fn slot(&self) -> Result<i64, crate::provider::error::DataProviderError> {

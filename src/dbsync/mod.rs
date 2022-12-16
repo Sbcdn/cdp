@@ -9,6 +9,8 @@ mod schema;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
+use crate::models::CDPDatum;
+
 extern crate pretty_env_logger;
 
 #[derive(Debug, Clone)]
@@ -107,6 +109,13 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
     ) -> Result<Vec<crate::models::CardanoNativeAssetView>, crate::provider::error::DataProviderError>
     {
         Ok(api::get_utxo_tokens(self, utxo_id, index)?)
+    }
+
+    async fn find_datums_for_tx(
+        &self,
+        txid: &Vec<u8>,
+    ) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+        Ok(api::find_datums_for_tx(self, txid)?)
     }
 
     async fn slot(&self) -> Result<i64, crate::provider::error::DataProviderError> {

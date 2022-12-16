@@ -1,7 +1,7 @@
 use super::error::DataProviderCarbError;
 use super::CarbProvider;
 use crate::models::{
-    CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 
@@ -61,6 +61,13 @@ pub fn asset_utxos_on_addr(
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
     Ok(dcslc::TransactionUnspentOutputs::new())
+}
+
+pub fn find_datums_for_tx(
+    bfp: &CarbProvider,
+    txid: &Vec<u8>,
+) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+    todo!();
 }
 
 pub fn slot(bfp: &CarbProvider) -> Result<i64, DataProviderCarbError> {

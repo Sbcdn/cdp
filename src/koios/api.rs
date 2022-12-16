@@ -1,7 +1,7 @@
 use super::error::DataProviderKoiosError;
 use super::KoiosProvider;
 use crate::models::{
-    CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 
@@ -65,6 +65,13 @@ pub fn asset_utxos_on_addr(
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
     Ok(dcslc::TransactionUnspentOutputs::new())
+}
+
+pub fn find_datums_for_tx(
+    bfp: &KoiosProvider,
+    txid: &Vec<u8>,
+) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+    todo!();
 }
 
 pub fn slot(bfp: &KoiosProvider) -> Result<i64, DataProviderKoiosError> {

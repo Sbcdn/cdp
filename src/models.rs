@@ -69,4 +69,6 @@ pub struct CDPDatum {
     pub hash: Vec<u8>,
     pub json: Option<serde_json::Value>,
     pub bytes: Vec<u8>,
+    pub address: String,
+    pub addr_has_script: bool,
 }

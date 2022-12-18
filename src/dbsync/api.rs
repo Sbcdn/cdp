@@ -282,7 +282,13 @@ pub fn find_datums_for_tx(
         )
         .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
         .filter(tx::hash.eq(txid))
-        .select((datum::hash, datum::value.nullable(), datum::bytes))
+        .select((
+            datum::hash,
+            datum::value.nullable(),
+            datum::bytes,
+            tx_out::address,
+            tx_out::address_has_script,
+        ))
         .load::<crate::models::CDPDatum>(&mut dbs.connect()?);
 
     if let Ok(o) = datums {
@@ -309,11 +315,22 @@ pub fn find_datums_for_tx(
         .first::<(Option<Vec<u8>>, Option<i64>)>(&mut dbs.connect()?)?;
 
     datums = datum::table
+        .inner_join(
+            tx_out::table.on(tx_out::data_hash
+                .eq(datum::hash.nullable())
+                .or(tx_out::inline_datum_id.eq(datum::id.nullable()))),
+        )
         .filter(diesel::BoolExpressionMethods::or(
             datum::hash.eq(t.0.unwrap()),
             datum::id.eq(t.1.unwrap()),
         ))
-        .select((datum::hash, datum::value.nullable(), datum::bytes))
+        .select((
+            datum::hash,
+            datum::value.nullable(),
+            datum::bytes,
+            tx_out::address,
+            tx_out::address_has_script,
+        ))
         .load::<crate::models::CDPDatum>(&mut dbs.connect()?);
 
     Ok(datums?)

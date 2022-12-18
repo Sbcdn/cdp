@@ -308,6 +308,7 @@ pub fn find_datums_for_tx(
         .filter(tx_in::tx_in_id.eq(r.0))
         .filter(tx_in::tx_out_index.eq(r.1 as i16))
         .filter(tx_out::data_hash.is_not_null())
+        .filter(tx_out::address_has_script.eq(true))
         .select((
             tx_out::data_hash.nullable(),
             tx_out::inline_datum_id.nullable(),

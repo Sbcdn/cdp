@@ -297,16 +297,17 @@ pub fn find_datums_for_tx(
         }
     }
 
-    let r: (i64, i32) = redeemer::table
+    let r: i64 = redeemer::table
         .inner_join(tx::table.on(tx::id.eq(redeemer::tx_id)))
         .filter(tx::hash.eq(txid))
-        .select((redeemer::tx_id, redeemer::index))
-        .first::<(i64, i32)>(&mut dbs.connect()?)?;
+        .filter(redeemer::purpose.eq(super::models::Scriptpurposetype::Spend))
+        .select(redeemer::tx_id)
+        .first::<i64>(&mut dbs.connect()?)?;
 
     let t: (Option<Vec<u8>>, Option<i64>) = tx_out::table
         .inner_join(tx_in::table.on(tx_in::tx_out_id.eq(tx_out::tx_id)))
-        .filter(tx_in::tx_in_id.eq(r.0))
-        .filter(tx_in::tx_out_index.eq(r.1 as i16))
+        .filter(tx_in::tx_in_id.eq(r))
+        .filter(tx_in::tx_out_index.eq(tx_out::index))
         .filter(tx_out::data_hash.is_not_null())
         .filter(tx_out::address_has_script.eq(true))
         .select((

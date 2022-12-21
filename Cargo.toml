@@ -12,11 +12,9 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 
 
 [dependencies]
-cardano-serialization-lib = "11.0.5"
+cardano-serialization-lib = "11.2.0"
 csl-common = { git = "https://github.com/drasil-blockchain/csl-common.git", branch = "main" }
-cryptoxide = { git = "https://github.com/typed-io/cryptoxide.git", branch = "master", features = [
-    "blake2",
-] }
+#cryptoxide = { version = "0.4.2", features = ["blake2"] }
 serde_json = { version = "1.0.79", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 hex = "0.4"

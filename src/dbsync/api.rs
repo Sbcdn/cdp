@@ -300,7 +300,8 @@ pub fn find_datums_for_tx(
     let r: i64 = redeemer::table
         .inner_join(tx::table.on(tx::id.eq(redeemer::tx_id)))
         .filter(tx::hash.eq(txid))
-        .filter(redeemer::purpose.eq(super::models::Scriptpurposetype::Spend))
+        //ToDo: FIX ME!
+        //   .filter(redeemer::purpose.eq(super::models::Scriptpurposetype::Spend))
         .select(redeemer::tx_id)
         .first::<i64>(&mut dbs.connect()?)?;
 

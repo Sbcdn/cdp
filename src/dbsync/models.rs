@@ -13,7 +13,7 @@ use diesel::prelude::*;
 use diesel::sql_types::{Array, BigInt, Float8, Int4, Jsonb, Numeric};
 use diesel_derive_enum::DbEnum;
 
-#[derive(Debug, Clone, DbEnum)]
+#[derive(Debug, Clone, DbEnum, QueryId)]
 #[ExistingTypePath = "crate::dbsync::schema::sql_types::Syncstatetype"]
 pub enum Syncstatetype {
     #[db_rename = "lagging"]
@@ -21,7 +21,7 @@ pub enum Syncstatetype {
     #[db_rename = "following"]
     Following,
 }
-#[derive(Debug, Clone, DbEnum)]
+#[derive(Debug, Clone, DbEnum, QueryId, SqlType)]
 #[ExistingTypePath = "crate::dbsync::schema::sql_types::Scriptpurposetype"]
 pub enum Scriptpurposetype {
     #[db_rename = "spend"]
@@ -33,7 +33,7 @@ pub enum Scriptpurposetype {
     #[db_rename = "reward"]
     Reward,
 }
-#[derive(Debug, Clone, DbEnum)]
+#[derive(Debug, Clone, DbEnum, QueryId)]
 #[ExistingTypePath = "crate::dbsync::schema::sql_types::Rewardtype"]
 pub enum Rewardtype {
     #[db_rename = "leader"]
@@ -47,7 +47,7 @@ pub enum Rewardtype {
     #[db_rename = "refund"]
     Refund,
 }
-#[derive(Debug, Clone, DbEnum)]
+#[derive(Debug, Clone, DbEnum, QueryId)]
 #[ExistingTypePath = "crate::dbsync::schema::sql_types::Scripttype"]
 pub enum Scripttype {
     #[db_rename = "multisig"]

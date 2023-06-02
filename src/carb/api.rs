@@ -1,14 +1,15 @@
 use super::error::DataProviderCarbError;
 use super::CarbProvider;
 use crate::models::{
-    CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
     bfp: &CarbProvider,
-    utxo_id: i64,
+    tx_id: i64,
+    tx_index: i16,
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderCarbError> {
     todo!()
 }
@@ -21,27 +22,52 @@ pub fn select_addr_of_first_transaction(
 }
 
 /// get all utxos of an address
+pub fn utxo_by_dataumhash(
+    bfp: &CarbProvider,
+    addr: &str,
+    datumhash: &Vec<u8>,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderCarbError> {
+    Err(DataProviderCarbError::Custom("not implemented".to_string()))
+}
+
+/// returns Utxo of a certain datumhash on an address
+pub fn utxo_by_txid(
+    bfp: &CarbProvider,
+    txhash: &Vec<u8>,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderCarbError> {
+    Err(DataProviderCarbError::Custom("not implemented".to_string()))
+}
+
+/// get all utxos of an address
 pub fn get_address_utxos(
     bfp: &CarbProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn get_stake_address_utxos(
     bfp: &CarbProvider,
     stake_addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn asset_utxos_on_addr(
     bfp: &CarbProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
+}
+
+pub fn find_datums_for_tx(
+    bfp: &CarbProvider,
+    txid: &Vec<u8>,
+) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+    todo!();
 }
 
 pub fn slot(bfp: &CarbProvider) -> Result<i64, DataProviderCarbError> {
@@ -141,6 +167,7 @@ pub fn mint_metadata(
         json: None,
         txhash: None,
         quantity: None,
+        mint_slot: None,
     })
 }
 

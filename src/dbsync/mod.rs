@@ -9,6 +9,8 @@ mod schema;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
+use crate::models::CDPDatum;
+
 extern crate pretty_env_logger;
 
 #[derive(Debug, Clone)]
@@ -44,30 +46,21 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
     async fn wallet_utxos(
         &self,
         stake_addr: &str,
-    ) -> Result<
-        drasil_csl_common::TransactionUnspentOutputs,
-        crate::provider::error::DataProviderError,
-    > {
+    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
         Ok(api::get_stake_address_utxos(self, stake_addr)?)
     }
 
     async fn script_utxos(
         &self,
         addr: &str,
-    ) -> Result<
-        drasil_csl_common::TransactionUnspentOutputs,
-        crate::provider::error::DataProviderError,
-    > {
+    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
         Ok(api::get_address_utxos(self, addr)?)
     }
 
     async fn asset_utxos_on_addr(
         &self,
         addr: &str,
-    ) -> Result<
-        drasil_csl_common::TransactionUnspentOutputs,
-        crate::provider::error::DataProviderError,
-    > {
+    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
         Ok(api::asset_utxos_on_addr(self, addr)?)
     }
 
@@ -86,15 +79,43 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
         crate::provider::error::DataProviderError,
     > {
         let str_addr = api::select_addr_of_first_transaction(self, stake_address_in)?;
-        Ok(drasil_csl_common::addr_from_str(&str_addr)?)
+        Ok(dcslc::addr_from_str(&str_addr)?)
+    }
+
+    /// get all utxos of an address
+    async fn utxo_by_dataumhash(
+        &self,
+        addr: &str,
+        datumhash: &Vec<u8>,
+    ) -> Result<dcslc::TransactionUnspentOutput, crate::provider::error::DataProviderError> {
+        let utxo = api::utxo_by_dataumhash(self, addr, datumhash)?;
+        Ok(utxo)
+    }
+
+    /// returns Utxo of a certain datumhash on an address
+    async fn utxo_by_txid(
+        &self,
+        txhash: &Vec<u8>,
+        index: i16,
+    ) -> Result<dcslc::TransactionUnspentOutput, crate::provider::error::DataProviderError> {
+        let utxo = api::utxo_by_txid(self, txhash, index)?;
+        Ok(utxo)
     }
 
     async fn utxo_tokens(
         &self,
         utxo_id: i64,
+        index: i16,
     ) -> Result<Vec<crate::models::CardanoNativeAssetView>, crate::provider::error::DataProviderError>
     {
-        Ok(api::get_utxo_tokens(self, utxo_id)?)
+        Ok(api::get_utxo_tokens(self, utxo_id, index)?)
+    }
+
+    async fn find_datums_for_tx(
+        &self,
+        txid: &Vec<u8>,
+    ) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+        Ok(api::find_datums_for_tx(self, txid)?)
     }
 
     async fn slot(&self) -> Result<i64, crate::provider::error::DataProviderError> {
@@ -205,5 +226,21 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
         txhash: &str,
     ) -> Result<bool, crate::provider::error::DataProviderError> {
         Ok(api::txhash_spent(self, txhash)?)
+    }
+
+    async fn addresses_exist(
+        &self,
+        address: &Vec<&str>,
+    ) -> Result<Vec<bool>, crate::provider::error::DataProviderError> {
+        Ok(api::addresses_exist(self, address)?)
+    }
+
+    async fn tx_history(
+        &self,
+        addresses: &Vec<&str>,
+        slot: Option<u64>,
+    ) -> Result<Vec<crate::models::TxHistoryListView>, crate::provider::error::DataProviderError>
+    {
+        Ok(api::tx_history(self, addresses, slot)?)
     }
 }

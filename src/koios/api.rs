@@ -1,14 +1,15 @@
 use super::error::DataProviderKoiosError;
 use super::KoiosProvider;
 use crate::models::{
-    CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
     bfp: &KoiosProvider,
-    utxo_id: i64,
+    tx_id: i64,
+    tx_index: i16,
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderKoiosError> {
     todo!()
 }
@@ -21,27 +22,56 @@ pub fn select_addr_of_first_transaction(
 }
 
 /// get all utxos of an address
+pub fn get_utxo_by_dataumhash(
+    bfp: &KoiosProvider,
+    addr: &str,
+    datumhash: &Vec<u8>,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderKoiosError> {
+    Err(DataProviderKoiosError::Custom(
+        "not implemented".to_string(),
+    ))
+}
+
+/// get all utxos of an address
+pub fn utxo_by_txid(
+    bfp: &KoiosProvider,
+    txhash: &Vec<u8>,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderKoiosError> {
+    Err(DataProviderKoiosError::Custom(
+        "not implemented".to_string(),
+    ))
+}
+
+/// get all utxos of an address
 pub fn get_address_utxos(
     bfp: &KoiosProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn get_stake_address_utxos(
     bfp: &KoiosProvider,
     stake_addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub fn asset_utxos_on_addr(
     bfp: &KoiosProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
+    Ok(dcslc::TransactionUnspentOutputs::new())
+}
+
+pub fn find_datums_for_tx(
+    bfp: &KoiosProvider,
+    txid: &Vec<u8>,
+) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+    todo!();
 }
 
 pub fn slot(bfp: &KoiosProvider) -> Result<i64, DataProviderKoiosError> {
@@ -141,6 +171,7 @@ pub fn mint_metadata(
         json: None,
         txhash: None,
         quantity: None,
+        mint_slot: None,
     })
 }
 

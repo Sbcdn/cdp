@@ -1,12 +1,14 @@
 pub mod config;
-pub(crate) mod error;
+pub mod error;
+use crate::models::CDPDatum;
+
 use super::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 use async_trait::async_trait;
 use cardano_serialization_lib::address::Address;
-use drasil_csl_common::TransactionUnspentOutputs;
+use dcslc::TransactionUnspentOutputs;
 use error::DataProviderError;
 
 #[async_trait]
@@ -36,11 +38,26 @@ pub trait CardanoDataProvider {
         &self,
         stake_address_in: &str,
     ) -> Result<Address, DataProviderError>;
+    /// returns Utxo of a certain datumhash on an address
+    async fn utxo_by_dataumhash(
+        &self,
+        addr: &str,
+        datumhash: &Vec<u8>,
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError>;
+    /// returns Utxo of a certain datumhash on an address
+    async fn utxo_by_txid(
+        &self,
+        txhash: &Vec<u8>,
+        index: i16,
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError>;
     /// return the Cardano Native Tokens on an utxo using the dbsync txout-id
     async fn utxo_tokens(
         &self,
-        utxo_id: i64,
+        tx_id: i64,
+        tx_index: i16,
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>;
+    /// find all datums included in this tx
+    async fn find_datums_for_tx(&self, txid: &Vec<u8>) -> Result<Vec<CDPDatum>, DataProviderError>;
     /// returns the latest slot
     async fn slot(&self) -> Result<i64, DataProviderError>;
     /// return an Vector containing all stake addresses and their staked amount for the given epoch and pool
@@ -95,6 +112,14 @@ pub trait CardanoDataProvider {
     async fn pool_valid(&self, pool_id: &str) -> Result<bool, DataProviderError>;
     /// checks if a utxo is already spent
     async fn txhash_spent(&self, txhash: &str) -> Result<bool, DataProviderError>;
+
+    async fn addresses_exist(&self, addresses: &Vec<&str>) -> Result<Vec<bool>, DataProviderError>;
+
+    async fn tx_history(
+        &self,
+        addresses: &Vec<&str>,
+        slot: Option<u64>,
+    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError>;
 }
 
 pub struct DataProvider<T: CardanoDataProvider> {
@@ -151,14 +176,34 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
             .first_transaction_from_stake_addr(stake_address_in)
             .await
     }
-
-    async fn utxo_tokens(
+    /// returns Utxo of a certain datumhash on an address
+    async fn utxo_by_txid(
         &self,
-        utxo_id: i64,
-    ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError> {
-        self.provider().utxo_tokens(utxo_id).await
+        txhash: &Vec<u8>,
+        index: i16,
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
+        self.provider().utxo_by_txid(txhash, index).await
     }
 
+    /// get all utxos of an address
+    async fn utxo_by_dataumhash(
+        &self,
+        addr: &str,
+        datumhash: &Vec<u8>,
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
+        self.provider().utxo_by_dataumhash(addr, datumhash).await
+    }
+    async fn utxo_tokens(
+        &self,
+        tx_id: i64,
+        tx_index: i16,
+    ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError> {
+        self.provider().utxo_tokens(tx_id, tx_index).await
+    }
+
+    async fn find_datums_for_tx(&self, txid: &Vec<u8>) -> Result<Vec<CDPDatum>, DataProviderError> {
+        self.provider().find_datums_for_tx(txid).await
+    }
     async fn slot(&self) -> Result<i64, DataProviderError> {
         self.provider().slot().await
     }
@@ -252,5 +297,17 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
 
     async fn alive(&self) -> bool {
         self.provider().alive().await
+    }
+
+    async fn addresses_exist(&self, addresses: &Vec<&str>) -> Result<Vec<bool>, DataProviderError> {
+        self.provider().addresses_exist(addresses).await
+    }
+
+    async fn tx_history(
+        &self,
+        addresses: &Vec<&str>,
+        slot: Option<u64>,
+    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError> {
+        self.provider().tx_history(addresses, slot).await
     }
 }

@@ -3,7 +3,7 @@ use blockfrost::stream::StreamExt;
 use super::error::DataProviderBlockfrostError;
 use super::BlockfrostProvider;
 use crate::models::{
-    CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 use blockfrost::{AccountAddress, AddressUtxo};
@@ -11,7 +11,8 @@ use blockfrost::{AccountAddress, AddressUtxo};
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
     bfp: &BlockfrostProvider,
-    utxo_id: i64,
+    tx_id: i64,
+    tx_index: i16,
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderBlockfrostError> {
     todo!()
 }
@@ -24,10 +25,32 @@ pub fn select_addr_of_first_transaction(
 }
 
 /// get all utxos of an address
+pub fn utxo_by_dataumhash(
+    bfp: &BlockfrostProvider,
+    addr: &str,
+    datumhash: &Vec<u8>,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderBlockfrostError> {
+    Err(DataProviderBlockfrostError::Custom(
+        "not implemented".to_string(),
+    ))
+}
+
+/// returns Utxo of a certain datumhash on an address
+pub fn utxo_by_txid(
+    bfp: &BlockfrostProvider,
+    txhash: &Vec<u8>,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderBlockfrostError> {
+    Err(DataProviderBlockfrostError::Custom(
+        "not implemented".to_string(),
+    ))
+}
+
+/// get all utxos of an address
 pub async fn get_address_utxos(
     bfp: &BlockfrostProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderBlockfrostError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
     let mut utxos = Vec::<AddressUtxo>::new();
     utxos.extend(
         bfp.api
@@ -38,14 +61,14 @@ pub async fn get_address_utxos(
             })
             .await,
     );
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 /// Get all utxos of a stake address
 pub async fn get_stake_address_utxos(
     bfp: &BlockfrostProvider,
     stake_addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderBlockfrostError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
     let addresses = bfp
         .api
         .accounts_addresses_all(stake_addr)
@@ -68,13 +91,13 @@ pub async fn get_stake_address_utxos(
         );
     }
 
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+    Ok(dcslc::TransactionUnspentOutputs::new())
 }
 
 pub async fn asset_utxos_on_addr(
     bfp: &BlockfrostProvider,
     addr: &str,
-) -> Result<drasil_csl_common::TransactionUnspentOutputs, DataProviderBlockfrostError> {
+) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
     let mut utxos = Vec::<AddressUtxo>::new();
     utxos.extend(
         bfp.api
@@ -88,7 +111,14 @@ pub async fn asset_utxos_on_addr(
 
     // ToDo: Filter asset utxos and transform
 
-    Ok(drasil_csl_common::TransactionUnspentOutputs::new())
+    Ok(dcslc::TransactionUnspentOutputs::new())
+}
+
+pub fn find_datums_for_tx(
+    bfp: &BlockfrostProvider,
+    txid: &Vec<u8>,
+) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+    todo!();
 }
 
 pub async fn slot(bfp: &BlockfrostProvider) -> Result<i64, DataProviderBlockfrostError> {
@@ -190,6 +220,7 @@ pub fn mint_metadata(
         json: None,
         txhash: None,
         quantity: None,
+        mint_slot: None,
     })
 }
 

@@ -233,4 +233,20 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     ) -> Result<bool, crate::provider::error::DataProviderError> {
         Ok(api::txhash_spent(self, txhash)?)
     }
+
+    async fn addresses_exist(
+        &self,
+        address: &Vec<&str>,
+    ) -> Result<Vec<bool>, crate::provider::error::DataProviderError> {
+        Ok(Vec::new())
+    }
+
+    async fn tx_history(
+        &self,
+        addresses: &Vec<&str>,
+        slot: Option<u64>,
+    ) -> Result<Vec<crate::models::TxHistoryListView>, crate::provider::error::DataProviderError>
+    {
+        Ok(Vec::new())
+    }
 }

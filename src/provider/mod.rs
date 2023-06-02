@@ -112,6 +112,14 @@ pub trait CardanoDataProvider {
     async fn pool_valid(&self, pool_id: &str) -> Result<bool, DataProviderError>;
     /// checks if a utxo is already spent
     async fn txhash_spent(&self, txhash: &str) -> Result<bool, DataProviderError>;
+
+    async fn addresses_exist(&self, addresses: &Vec<&str>) -> Result<Vec<bool>, DataProviderError>;
+
+    async fn tx_history(
+        &self,
+        addresses: &Vec<&str>,
+        slot: Option<u64>,
+    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError>;
 }
 
 pub struct DataProvider<T: CardanoDataProvider> {
@@ -289,5 +297,17 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
 
     async fn alive(&self) -> bool {
         self.provider().alive().await
+    }
+
+    async fn addresses_exist(&self, addresses: &Vec<&str>) -> Result<Vec<bool>, DataProviderError> {
+        self.provider().addresses_exist(addresses).await
+    }
+
+    async fn tx_history(
+        &self,
+        addresses: &Vec<&str>,
+        slot: Option<u64>,
+    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError> {
+        self.provider().tx_history(addresses, slot).await
     }
 }

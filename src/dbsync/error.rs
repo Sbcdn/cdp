@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum DataProviderDBSyncError {
     #[error("DBSync Error")]
     DBSyncError(String),
+    #[error("RequestValueNotFound")]
+    RequestValueNotFound(String),
     #[error("Custom Error")]
     Custom(String),
     #[error(transparent)]

@@ -220,6 +220,7 @@ pub fn mint_metadata(
         json: None,
         txhash: None,
         quantity: None,
+        mint_slot: None,
     })
 }
 

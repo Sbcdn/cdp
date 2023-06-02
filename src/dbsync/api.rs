@@ -2,11 +2,13 @@ use super::error::DataProviderDBSyncError;
 use super::models::{PoolHash, PoolRetire, UnspentUtxo, UtxoView};
 use super::schema::*;
 use crate::models::{
-    CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    CardanoNativeAssetView, DelegationView, HoldingWalletView, ScriptView, StakeDelegationView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, TxHistoryListQuery,
+    TxHistoryListView, UTxOView, WithdrawalView,
 };
 use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
+use dcslc::TransactionUnspentOutputs;
 use diesel::prelude::*;
 /// get all tokens of an utxo
 
@@ -59,10 +61,6 @@ pub fn select_addr_of_first_transaction(
     dbs: &DBSyncProvider,
     stake_address_in: &str,
 ) -> Result<String, DataProviderDBSyncError> {
-    log::debug!(
-        "Try to find first address used by this stake address: {}",
-        stake_address_in
-    );
     let resp = tx_out::table
         .left_join(tx::table.on(tx_out::tx_id.eq(tx::id)))
         .left_join(block::table.on(tx::block_id.eq(block::id)))
@@ -73,7 +71,6 @@ pub fn select_addr_of_first_transaction(
         .select(tx_out::address)
         .order(block::slot_no.asc())
         .first::<String>(&mut dbs.connect()?);
-    log::debug!("Found address: {:?}", resp);
     let resp = resp?;
     Ok(resp)
 }
@@ -115,6 +112,33 @@ pub fn utxo_by_txid(
     let unspent = utxo_view::table
         .inner_join(tx::table.on(tx::id.eq(utxo_view::tx_id)))
         .filter(tx::hash.eq(txhash))
+        .filter(utxo_view::index.eq(index))
+        .select((
+            utxo_view::id,
+            utxo_view::tx_id,
+            utxo_view::index,
+            utxo_view::address,
+            utxo_view::address_raw,
+            utxo_view::address_has_script,
+            utxo_view::payment_cred,
+            utxo_view::stake_address_id,
+            utxo_view::value,
+            utxo_view::data_hash,
+            utxo_view::inline_datum_id,
+            utxo_view::reference_script_id,
+        ))
+        .first::<UtxoView>(&mut dbs.connect()?)?;
+    unspent.to_txuo(dbs)
+}
+
+/// get utxos by hash and index
+fn utxo_by_txid_db(
+    dbs: &DBSyncProvider,
+    txid: i64,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
+    let unspent = utxo_view::table
+        .filter(utxo_view::id.eq(txid))
         .filter(utxo_view::index.eq(index))
         .select((
             utxo_view::id,
@@ -452,6 +476,7 @@ pub fn token_info(
         quantity: None,
         meta_key: None,
         json: None,
+        mint_slot: None,
         txhash: None,
     };
 
@@ -600,16 +625,19 @@ pub fn lookup_nft_token_holders(
     dbs: &DBSyncProvider,
     policy: &str,
 ) -> Result<Vec<HoldingWalletView>, DataProviderDBSyncError> {
-    let pbyte = hex::decode(&policy)?;
+    let pbyte = hex::decode(policy)?;
 
-    let mut holders = unspent_utxos::table
+    let holders = unspent_utxos::table
         .inner_join(ma_tx_out::table.on(unspent_utxos::id.eq(ma_tx_out::tx_out_id)))
         .left_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .filter(multi_asset::policy.eq(pbyte))
         .filter(unspent_utxos::stake_address.is_not_null())
         .filter(ma_tx_out::quantity.eq(BigDecimal::from(1)))
         .select((unspent_utxos::stake_address.nullable(), ma_tx_out::quantity))
-        .load::<(Option<String>, BigDecimal)>(&mut dbs.connect()?)?;
+        .load::<(Option<String>, BigDecimal)>(&mut dbs.connect()?)
+        .ok();
+
+    let mut holders = if let Some(h) = holders { h } else { vec![] };
 
     holders.retain(|p| p.0.is_some());
 
@@ -643,6 +671,7 @@ pub fn mint_metadata(
             tx_metadata::key,
             tx_metadata::json.nullable(),
             tx::hash,
+            block::slot_no.nullable(),
         ))
         .first::<(
             String,
@@ -651,17 +680,95 @@ pub fn mint_metadata(
             BigDecimal,
             Option<serde_json::Value>,
             Vec<u8>,
-        )>(&mut dbs.connect()?)?;
+            Option<i64>,
+        )>(&mut dbs.connect()?)
+        .ok();
+    if let Some(m) = metadata {
+        Ok(TokenInfoView {
+            fingerprint: m.0,
+            policy: hex::encode(m.1),
+            tokenname: String::from_utf8(m.2)?,
+            meta_key: Some(m.3.to_i64().unwrap()),
+            json: m.4,
+            txhash: Some(hex::encode(m.5)),
+            quantity: None,
+            mint_slot: m.6,
+        })
+    } else {
+        let metadata = ma_tx_mint::table
+            .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_mint::ident)))
+            .inner_join(tx::table.on(ma_tx_mint::tx_id.eq(tx::id)))
+            .inner_join(block::table.on(tx::block_id.eq(block::id)))
+            .filter(multi_asset::fingerprint.eq(fingerprint_in))
+            .order_by(block::slot_no.desc())
+            .select((
+                multi_asset::fingerprint,
+                multi_asset::policy,
+                multi_asset::name,
+                tx::hash,
+                block::slot_no.nullable(),
+            ))
+            .first::<(String, Vec<u8>, Vec<u8>, Vec<u8>, Option<i64>)>(&mut dbs.connect()?)
+            .ok();
+        if let Some(m) = metadata {
+            Ok(TokenInfoView {
+                fingerprint: m.0,
+                policy: hex::encode(m.1),
+                tokenname: String::from_utf8(m.2)?,
+                meta_key: None,
+                json: None,
+                txhash: Some(hex::encode(m.3)),
+                quantity: None,
+                mint_slot: m.4,
+            })
+        } else {
+            Err(DataProviderDBSyncError::RequestValueNotFound(
+                fingerprint_in.to_owned(),
+            ))
+        }
+    }
+}
 
-    Ok(TokenInfoView {
-        fingerprint: metadata.0,
-        policy: hex::encode(metadata.1),
-        tokenname: String::from_utf8(metadata.2)?,
-        meta_key: Some(metadata.3.to_i64().unwrap()),
-        json: metadata.4,
-        txhash: Some(hex::encode(metadata.5)),
-        quantity: None,
-    })
+pub async fn get_pools(
+    dbs: &DBSyncProvider,
+) -> Result<Vec<crate::models::PoolView>, DataProviderDBSyncError> {
+    let pools = pool_hash::table
+        .left_join(pool_retire::table.on(pool_retire::hash_id.eq(pool_hash::id)))
+        .inner_join(pool_offline_data::table.on(pool_offline_data::pool_id.eq(pool_hash::id)))
+        .filter(pool_retire::hash_id.is_null())
+        .select((
+            pool_hash::view,
+            pool_offline_data::ticker_name,
+            pool_offline_data::json,
+        ))
+        .load::<crate::models::PoolView>(&mut dbs.connect()?)
+        .ok();
+    log::debug!("get_pools: {:?}", pools);
+    if let Some(p) = pools {
+        Ok(p)
+    } else {
+        Err(DataProviderDBSyncError::RequestValueNotFound(
+            "pools".to_owned(),
+        ))
+    }
+}
+
+pub async fn tx_metadata(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<Option<serde_json::Value>, DataProviderDBSyncError> {
+    let metadata: Option<Option<serde_json::Value>> = tx::table
+        .inner_join(tx_metadata::table.on(tx_metadata::tx_id.eq(tx::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select(tx_metadata::json.nullable())
+        .first::<Option<serde_json::Value>>(&mut dbs.connect()?)
+        .ok();
+
+    if let Some(m) = metadata {
+        Ok(m)
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn pool_valid(dbs: &DBSyncProvider, pool_id: &str) -> Result<bool, DataProviderDBSyncError> {
@@ -697,5 +804,771 @@ pub fn txhash_spent(dbs: &DBSyncProvider, txhash: &str) -> Result<bool, DataProv
         Ok(true)
     } else {
         Ok(false)
+    }
+}
+
+pub async fn token_supply(
+    dbs: &DBSyncProvider,
+    fingerprint: &str,
+) -> Result<Option<BigDecimal>, DataProviderDBSyncError> {
+    multi_asset::table
+        .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+        .inner_join(utxo_view::table.on(utxo_view::id.eq(ma_tx_out::tx_out_id)))
+        .filter(multi_asset::fingerprint.eq(fingerprint))
+        .select(diesel::dsl::sum(ma_tx_out::quantity.nullable()))
+        .first::<Option<BigDecimal>>(&mut dbs.connect()?)
+        .map_err(|_| DataProviderDBSyncError::RequestValueNotFound(fingerprint.to_owned()))
+}
+
+pub async fn check_nft_supply(
+    dbs: &DBSyncProvider,
+    fingerprint: &str,
+) -> Result<bool, DataProviderDBSyncError> {
+    if let Ok(o) = multi_asset::table
+        .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+        .inner_join(utxo_view::table.on(utxo_view::id.eq(ma_tx_out::tx_out_id)))
+        .filter(multi_asset::fingerprint.eq(fingerprint))
+        .select(ma_tx_out::quantity.nullable())
+        .limit(2)
+        .load::<Option<BigDecimal>>(&mut dbs.connect()?)
+        .map_err(|_| DataProviderDBSyncError::RequestValueNotFound(fingerprint.to_owned()))
+    {
+        if o.len() == 1 {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+pub async fn is_nft(
+    dbs: &DBSyncProvider,
+    fingerprints: &[&str],
+) -> Result<Vec<bool>, DataProviderDBSyncError> {
+    let mut out = Vec::<bool>::new();
+    for f in fingerprints {
+        if check_nft_supply(dbs, f).await? {
+            out.push(true);
+        } else {
+            out.push(false);
+        }
+    }
+    Ok(out)
+}
+
+pub fn addresses_exist(
+    dbs: &DBSyncProvider,
+    addresses: &Vec<&str>,
+) -> Result<Vec<bool>, DataProviderDBSyncError> {
+    let mut out = vec![];
+    for a in addresses {
+        let id = tx_out::table
+            .select(tx_out::id)
+            .filter(tx_out::address.eq(a))
+            .load::<i64>(&mut dbs.connect()?)?;
+        if id.is_empty() {
+            out.push(false);
+        } else {
+            out.push(true);
+        }
+    }
+    Ok(out)
+}
+// ToDo: Slot limitation to query just before a certain slot
+fn _tx_history_q(
+    dbs: &DBSyncProvider,
+    addresses: &[&str],
+    _slot: Option<u64>,
+) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderDBSyncError> {
+    let mut addresses = addresses.iter().fold("(".to_string(), |mut acc, a| {
+        acc.push_str(&("'".to_string() + a + "',"));
+        acc
+    });
+    addresses.pop();
+    addresses.push(')');
+    let query =format!("select 
+    distinct t.hash,
+    min(b.slot_no) as slot, asset.fingerprint,
+    asset.value from tx_out to2
+    join tx t on t.id = to2.tx_id
+    join block b on b.id = t.block_id 
+    join lateral (
+        select array_agg(ma.fingerprint) as fingerprint, array_agg(mto.quantity) as value, mto.tx_out_id 
+        from ma_tx_out as mto
+        join multi_asset ma on ma.id = mto.ident
+        where mto.tx_out_id = to2.id
+        group by mto.tx_out_id 
+        ) as asset on asset.tx_out_id  = to2.id 
+    where address IN {addresses}
+    group by t.hash, b.slot_no, asset.fingerprint, asset.value");
+    log::debug!("{addresses}");
+    let txhistory_q: Vec<TxHistoryListQuery> =
+        diesel::sql_query(query).load(&mut dbs.connect()?).unwrap();
+
+    let mut txhistory: Vec<_> = txhistory_q
+        .iter()
+        .map(TxHistoryListView::from_tx_history_list_query)
+        .collect();
+    txhistory.sort_by_key(|n| n.slot);
+    Ok(txhistory)
+}
+
+// ToDo: Slot limitation to query just before a certain slot
+pub fn tx_history(
+    dbs: &DBSyncProvider,
+    addresses: &[&str],
+    slot: Option<u64>,
+) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderDBSyncError> {
+    let mut addresses = addresses.iter().fold("(".to_string(), |mut acc, a| {
+        acc.push_str(&("'".to_string() + a + "',"));
+        acc
+    });
+    addresses.pop();
+    addresses.push(')');
+    let query = format!(
+        "select 
+    distinct
+    t.hash, min(b.slot_no) as slot from tx_out to2
+    join tx t on t.id = to2.tx_id
+    join block b on b.id = t.block_id 
+    where address IN {addresses}
+    group by b.slot_no, t.hash order by slot desc"
+    );
+    log::trace!("{addresses}");
+    let txhistory: Option<Vec<crate::models::TxHistoryListQueryLight>> =
+        diesel::sql_query(query).load(&mut dbs.connect()?).ok();
+    log::debug!("{txhistory:?}");
+    let mut out = Vec::<crate::models::TxHistoryListView>::new();
+    if let Some(history) = txhistory {
+        for t in history.into_iter() {
+            out.push(crate::models::TxHistoryListView {
+                slot: t.slot,
+                hash: hex::encode(t.hash),
+                assets: vec![],
+            });
+        }
+    }
+
+    Ok(out)
+}
+
+pub async fn txo_by_id_index(
+    dbs: &DBSyncProvider,
+    id: i64,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
+    let txo = tx_out::table
+        .filter(tx_out::id.eq(id))
+        .filter(tx_out::index.eq(index))
+        .select((
+            tx_out::id,
+            tx_out::tx_id,
+            tx_out::index,
+            tx_out::address,
+            tx_out::address_raw,
+            tx_out::address_has_script,
+            tx_out::payment_cred,
+            tx_out::stake_address_id,
+            tx_out::value,
+            tx_out::data_hash,
+            tx_out::inline_datum_id,
+            tx_out::reference_script_id,
+        ))
+        .first::<crate::dbsync::models::TxOut>(&mut dbs.connect()?)?;
+    txo.to_txuo(dbs)
+}
+
+pub async fn collateral_txo_by_id_index(
+    dbs: &DBSyncProvider,
+    id: i64,
+    index: i16,
+) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
+    let txo = collateral_tx_out::table
+        .filter(collateral_tx_out::id.eq(id))
+        .filter(collateral_tx_out::index.eq(index))
+        .select((
+            collateral_tx_out::id,
+            collateral_tx_out::tx_id,
+            collateral_tx_out::index,
+            collateral_tx_out::address,
+            collateral_tx_out::address_raw,
+            collateral_tx_out::address_has_script,
+            collateral_tx_out::payment_cred,
+            collateral_tx_out::stake_address_id,
+            collateral_tx_out::value,
+            collateral_tx_out::data_hash,
+            collateral_tx_out::inline_datum_id,
+            collateral_tx_out::reference_script_id,
+        ))
+        .first::<crate::dbsync::models::TxOut>(&mut dbs.connect()?)?;
+    txo.to_txuo(dbs)
+}
+
+pub async fn get_tx_inputs(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let input_references: Vec<_> = tx::table
+        .inner_join(tx_in::table.on(tx_in::tx_in_id.eq(tx::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((tx_in::tx_out_id, tx_in::tx_out_index))
+        .load::<(i64, i16)>(&mut dbs.connect()?)?;
+    let mut temp = Vec::<(i64, i16)>::new();
+
+    for i in input_references.into_iter() {
+        let tx_out = tx_out::table
+            .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
+            .filter(tx::id.eq(i.0))
+            .filter(tx_out::index.eq(i.1))
+            .select((tx_out::id, tx_out::index))
+            .first::<(i64, i16)>(&mut dbs.connect()?)?;
+        temp.push(tx_out);
+    }
+    let mut txins = TransactionUnspentOutputs::new();
+    for i in temp.into_iter() {
+        // get utxos by hash and index
+        let txo = txo_by_id_index(dbs, i.0, i.1).await?;
+        txins.add(&txo)
+    }
+
+    Ok(txins)
+}
+
+pub async fn get_tx_reference_inputs(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let input_references: Vec<_> = tx::table
+        .inner_join(reference_tx_in::table.on(reference_tx_in::tx_in_id.eq(tx::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((reference_tx_in::tx_out_id, reference_tx_in::tx_out_index))
+        .load::<(i64, i16)>(&mut dbs.connect()?)?;
+    let mut temp = Vec::<(i64, i16)>::new();
+
+    for i in input_references.into_iter() {
+        let tx_out = tx_out::table
+            .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
+            .filter(tx::id.eq(i.0))
+            .filter(tx_out::index.eq(i.1))
+            .select((tx_out::id, tx_out::index))
+            .first::<(i64, i16)>(&mut dbs.connect()?)?;
+        temp.push(tx_out);
+    }
+    let mut txins = TransactionUnspentOutputs::new();
+    for i in temp.into_iter() {
+        // get utxos by hash and index
+        let txo = txo_by_id_index(dbs, i.0, i.1).await?;
+        txins.add(&txo)
+    }
+    Ok(txins)
+}
+
+pub async fn get_tx_outputs(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let output_references: Vec<_> = tx::table
+        .inner_join(tx_out::table.on(tx_out::tx_id.eq(tx::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((tx_out::id, tx_out::index))
+        .load::<(i64, i16)>(&mut dbs.connect()?)?;
+
+    let mut txout = TransactionUnspentOutputs::new();
+
+    for o in output_references.into_iter() {
+        let txo = txo_by_id_index(dbs, o.0, o.1).await?;
+        txout.add(&txo)
+    }
+    Ok(txout)
+}
+
+pub async fn get_withdrawls(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<Vec<WithdrawalView>, DataProviderDBSyncError> {
+    let withdrawals: Option<Vec<_>> = withdrawal::table
+        .inner_join(tx::table.on(withdrawal::tx_id.eq(tx::id)))
+        .inner_join(stake_address::table.on(withdrawal::addr_id.eq(stake_address::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((withdrawal::amount, stake_address::view))
+        .load::<(BigDecimal, String)>(&mut dbs.connect()?)
+        .ok();
+
+    let mut out = Vec::<WithdrawalView>::new();
+    if let Some(withdrawals) = withdrawals {
+        for w in withdrawals {
+            out.push(WithdrawalView {
+                amount: w.0.to_u64().unwrap(),
+                stake_address: w.1,
+            });
+        }
+    }
+
+    Ok(out)
+}
+
+pub async fn tx_stake_registration(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<Vec<StakeRegistrationView>, DataProviderDBSyncError> {
+    let stake_registration: Option<Vec<(String, i32, i32)>> = tx::table
+        .inner_join(stake_registration::table.on(stake_registration::tx_id.eq(tx::id)))
+        .inner_join(stake_address::table.on(stake_registration::addr_id.eq(stake_address::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((
+            stake_address::view,
+            stake_registration::epoch_no,
+            stake_registration::cert_index,
+        ))
+        .load::<(String, i32, i32)>(&mut dbs.connect()?)
+        .ok();
+
+    let mut out = Vec::<StakeRegistrationView>::new();
+    if let Some(stake_registration) = stake_registration {
+        for s in stake_registration.into_iter() {
+            out.push(StakeRegistrationView {
+                stake_address: s.0,
+                tx_hash: hex::decode(hash)?,
+                epoch: s.1,
+                cert_index: s.2,
+            });
+        }
+    }
+
+    Ok(out)
+}
+
+pub async fn tx_stake_deregistration(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<Vec<StakeDeregistrationView>, DataProviderDBSyncError> {
+    let stake_deregistration: Option<Vec<(String, i32, i32)>> = tx::table
+        .inner_join(stake_deregistration::table.on(stake_deregistration::tx_id.eq(tx::id)))
+        .inner_join(stake_address::table.on(stake_deregistration::addr_id.eq(stake_address::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((
+            stake_address::view,
+            stake_deregistration::epoch_no,
+            stake_deregistration::cert_index,
+        ))
+        .load::<(String, i32, i32)>(&mut dbs.connect()?)
+        .ok();
+
+    let mut out = Vec::<StakeDeregistrationView>::new();
+    if let Some(stake_deregistration) = stake_deregistration {
+        for s in stake_deregistration.into_iter() {
+            out.push(StakeDeregistrationView {
+                stake_address: s.0,
+                tx_hash: hex::decode(hash)?,
+                epoch: s.1,
+                cert_index: s.2,
+            });
+        }
+    }
+
+    Ok(out)
+}
+
+pub async fn tx_script(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<Vec<ScriptView>, DataProviderDBSyncError> {
+    let script: Option<
+        Vec<(
+            Vec<u8>,
+            super::models::Scripttype,
+            Option<serde_json::Value>,
+            Option<Vec<u8>>,
+        )>,
+    > = tx::table
+        .inner_join(script::table.on(script::tx_id.eq(tx::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((
+            script::hash,
+            script::type_,
+            script::json.nullable(),
+            script::bytes.nullable(),
+        ))
+        .load(&mut dbs.connect()?)
+        .ok();
+    let mut out = Vec::<ScriptView>::new();
+    if let Some(script) = script {
+        for s in script.into_iter() {
+            let bytes = s.3.map(hex::encode);
+
+            out.push(ScriptView {
+                hash: hex::encode(s.0),
+                r#type: s.1,
+                json: s.2,
+                bytes,
+            });
+        }
+    }
+
+    Ok(out)
+}
+
+pub async fn tx_collateral_in(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let collateral_tx_in_ref: Option<Vec<_>> = tx::table
+        .inner_join(collateral_tx_in::table.on(collateral_tx_in::tx_in_id.eq(tx::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((collateral_tx_in::tx_out_id, collateral_tx_in::tx_out_index))
+        .load::<(i64, i16)>(&mut dbs.connect()?)
+        .ok();
+
+    let mut temp = Vec::<(i64, i16)>::new();
+    if let Some(collateral_tx_in_ref) = collateral_tx_in_ref {
+        for i in collateral_tx_in_ref.into_iter() {
+            let tx_out = tx_out::table
+                .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
+                .filter(tx::id.eq(i.0))
+                .filter(tx_out::index.eq(i.1))
+                .select((tx_out::id, tx_out::index))
+                .first::<(i64, i16)>(&mut dbs.connect()?)
+                .ok();
+            if let Some(tx_out) = tx_out {
+                temp.push(tx_out)
+            }
+        }
+    }
+    let mut txins = TransactionUnspentOutputs::new();
+
+    for i in temp.into_iter() {
+        let txo = txo_by_id_index(dbs, i.0, i.1).await?;
+        txins.add(&txo)
+    }
+    Ok(txins)
+}
+
+pub async fn tx_collateral_out(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let output_references: Option<Vec<_>> = collateral_tx_out::table
+        .inner_join(tx::table.on(collateral_tx_out::tx_id.eq(tx::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((collateral_tx_out::id, collateral_tx_out::index))
+        .load::<(i64, i16)>(&mut dbs.connect()?)
+        .ok();
+
+    let mut txout = TransactionUnspentOutputs::new();
+    if let Some(output_references) = output_references {
+        for o in output_references.into_iter() {
+            let txo = collateral_txo_by_id_index(dbs, o.0, o.1).await?;
+            txout.add(&txo)
+        }
+    }
+    Ok(txout)
+}
+
+pub async fn discover_transaction(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<crate::models::TransactionView, DataProviderDBSyncError> {
+    let inputs = get_tx_inputs(dbs, hash).await?;
+    log::debug!("Inputs: \n{inputs:?}\n");
+    let reference_inputs = get_tx_reference_inputs(dbs, hash).await?;
+    log::debug!("Reference Inputs: \n{reference_inputs:?}\n");
+    let outputs = get_tx_outputs(dbs, hash).await?;
+    log::debug!("Outputs: \n{outputs:?}\n");
+    let withdrawals = get_withdrawls(dbs, hash).await?;
+    log::debug!("Withdrawal: \n{withdrawals:?}\n");
+    let metadata = tx_metadata(dbs, hash).await?;
+    log::debug!("Metadata: \n{metadata:?}\n");
+    let stake_registration = tx_stake_registration(dbs, hash).await?;
+    log::debug!("Stake Registration: \n{stake_registration:?}\n");
+    let stake_deregistration = tx_stake_deregistration(dbs, hash).await?;
+    log::debug!("Stake Deregistration: \n {stake_deregistration:?}\n");
+    let script = tx_script(dbs, hash).await?;
+    log::debug!("Script: {script:?}");
+    let collateral_tx_in = tx_collateral_in(dbs, hash).await?;
+    log::debug!("Collateral Tx In: {collateral_tx_in:?}");
+    let collateral_tx_out = tx_collateral_out(dbs, hash).await?;
+    log::debug!("Collateral Tx Out: {collateral_tx_out:?}");
+    let txinfo = tx::table
+        .inner_join(block::table.on(block::id.eq(tx::block_id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select((
+            tx::fee,
+            block::hash,
+            block::epoch_no.nullable(),
+            block::slot_no.nullable(),
+        ))
+        .first::<(BigDecimal, Vec<u8>, Option<i32>, Option<i64>)>(&mut dbs.connect()?)?;
+    log::debug!("TxInfo: {txinfo:?}");
+
+    Ok(crate::models::TransactionView {
+        hash: hash.to_string(),
+        block: hex::encode(txinfo.1),
+        slot: txinfo.3,
+        inputs: inputs
+            .into_iter()
+            .fold(Vec::<UTxOView>::new(), |mut acc, n| {
+                acc.push(UTxOView::from_txuo(&n));
+                acc
+            }),
+        reference_inputs: if reference_inputs.is_empty() {
+            None
+        } else {
+            Some(
+                reference_inputs
+                    .into_iter()
+                    .fold(Vec::<UTxOView>::new(), |mut acc, n| {
+                        acc.push(UTxOView::from_txuo(&n));
+                        acc
+                    }),
+            )
+        },
+        outputs: outputs
+            .into_iter()
+            .fold(Vec::<UTxOView>::new(), |mut acc, n| {
+                acc.push(UTxOView::from_txuo(&n));
+                acc
+            }),
+        withdrawals: if withdrawals.is_empty() {
+            None
+        } else {
+            Some(withdrawals)
+        },
+        metadata,
+        stake_registration: if stake_registration.is_empty() {
+            None
+        } else {
+            Some(stake_registration)
+        },
+        stake_deregistration: if stake_deregistration.is_empty() {
+            None
+        } else {
+            Some(stake_deregistration)
+        },
+        script: if script.is_empty() {
+            None
+        } else {
+            Some(script)
+        },
+        collateral_tx_in: if collateral_tx_in.is_empty() {
+            None
+        } else {
+            Some(
+                collateral_tx_in
+                    .into_iter()
+                    .fold(Vec::<UTxOView>::new(), |mut acc, n| {
+                        acc.push(UTxOView::from_txuo(&n));
+                        acc
+                    }),
+            )
+        },
+        collateral_tx_out: if collateral_tx_out.is_empty() {
+            None
+        } else {
+            Some(
+                collateral_tx_out
+                    .into_iter()
+                    .fold(Vec::<UTxOView>::new(), |mut acc, n| {
+                        acc.push(UTxOView::from_txuo(&n));
+                        acc
+                    }),
+            )
+        },
+        fee: txinfo.0.to_u64().unwrap(),
+        cbor: None,
+    })
+}
+
+pub async fn epoch_nonce(
+    dbs: &DBSyncProvider,
+    epoch: i32,
+) -> Result<(Vec<u8>, Option<Vec<u8>>), DataProviderDBSyncError> {
+    let out = epoch_param::table
+        .filter(epoch_param::epoch_no.eq(epoch))
+        .select((epoch_param::nonce, epoch_param::extra_entropy.nullable()))
+        .first::<(Vec<u8>, Option<Vec<u8>>)>(&mut dbs.connect()?)?;
+    Ok(out)
+}
+
+//ToDo:
+//temporary declared here, common type library needs to be created
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Message {
+    pub last_epoch: u64,
+    pub last_blockhash: String,
+    pub last_slot: u64,
+    pub new_epoch: u64,
+    pub new_slot: u64,
+    pub new_blockhash: String,
+    pub epoch_nonce: String,
+    pub extra_entropy: Option<String>,
+}
+
+pub async fn epoch_change(
+    dbs: &DBSyncProvider,
+    epoch: Option<i32>,
+) -> Result<Message, DataProviderDBSyncError> {
+    // select b.id, b.hash, b.slot_no, b.block_no, b.previous_id, ep.nonce, ep.extra_entropy from block b
+    // left join epoch_param ep on ep.epoch_no  = b.epoch_no
+    // where b.block_no = (select min(block_no-1) from block b where b.epoch_no = 209) or b.block_no = (select min(block_no) from block b where b.epoch_no = 209)
+    // order by block_no DESC;
+
+    let (b, b1, ep) = diesel::alias!(block as b, block as b1, epoch_param as ep);
+
+    let min_block = b1
+        .filter(b1.field(block::epoch_no).nullable().eq(epoch))
+        .select(diesel::dsl::min(b1.field(block::block_no)))
+        .single_value();
+
+    let out = b
+        .inner_join(
+            ep.on(ep
+                .field(epoch_param::epoch_no)
+                .nullable()
+                .eq(b.field(block::epoch_no))),
+        )
+        .filter(
+            b.field(block::block_no)
+                .eq(min_block - 1)
+                .or(b.field(block::block_no).eq(min_block)),
+        )
+        .select((
+            b.field(block::id),
+            b.field(block::hash),
+            b.field(block::slot_no).nullable(),
+            b.field(block::block_no).nullable(),
+            b.field(block::previous_id).nullable(),
+            b.field(block::epoch_no).nullable(),
+            ep.field(epoch_param::nonce),
+            ep.field(epoch_param::extra_entropy).nullable(),
+        ))
+        .order_by(b.field(block::epoch_no).desc())
+        .load::<(
+            i64,
+            Vec<u8>,
+            Option<i64>,
+            Option<i32>,
+            Option<i64>,
+            Option<i32>,
+            Vec<u8>,
+            Option<Vec<u8>>,
+        )>(&mut dbs.connect()?)?;
+    println!("out: {out:?}");
+    let out: Vec<(
+        i64,
+        String,
+        Option<i64>,
+        Option<i32>,
+        Option<i64>,
+        Option<i32>,
+        String,
+        Option<String>,
+    )> = out
+        .into_iter()
+        .map(|n| {
+            (
+                n.0,
+                hex::encode(n.1),
+                n.2,
+                n.3,
+                n.4,
+                n.5,
+                hex::encode(n.6),
+                n.7.map(hex::encode),
+            )
+        })
+        .collect();
+
+    let out = Message {
+        last_epoch: out[1].5.unwrap() as u64,
+        last_blockhash: out[1].1.clone(),
+        last_slot: out[1].2.unwrap() as u64,
+        new_epoch: out[0].5.unwrap() as u64,
+        new_slot: out[0].2.unwrap() as u64,
+        new_blockhash: out[0].1.clone(),
+        epoch_nonce: out[0].6.clone(),
+        extra_entropy: out[0].7.clone(),
+    };
+
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::provider::CardanoDataProvider;
+
+    #[tokio::test]
+    async fn test_tx_history() {
+        let r = vec!["addr_test1qqt86eq9972q3qttj6ztje97llasktzfzvhmdccqjlqjaq2cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qy6q5t2","addr_test1qpg8ehvgj9zxrx59et72yjn2p02xwsm3l89jwj8ujcj63ujcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw23emu","addr_test1qqdp3cry5vc2gfjljctdu638tvkcqfx40fjunht9hrmru5zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qnaxxgs","addr_test1qr2mw080ujz0unmpn9lx5ftfuewc6htyr6v3a0svul2zgezcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qgryf7t","addr_test1qr7tqh7tsg4lut3jv6tsfwlv464m6knjjw90ugyz8uzgr6zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qt0jxzj","addr_test1qrscurjp292sxv24sepj7ghq4ydkkekzaz53zwfswcna6ljcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6q8pu3l5","addr_test1qqssrphse6qmp9h0ksu5vfmsx99tfl2lc6rhvy2spd5wr86cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw59j4j","addr_test1qqgagc0fy6nm0qe4h8zqxsg952tqjeg7l7j0agd0cx4u25zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qxvept2"];
+
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let t = dp.tx_history(&r, None).await.unwrap();
+        println!("{t:?}");
+    }
+
+    #[tokio::test]
+    async fn test_discover_transaction() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let t = crate::dbsync::discover_transaction(
+            dp.provider(),
+            "1b07f1152e52ce0a9dbb561aa2e2d1750ca3a1a4141150a8bad342947a66a3a6",
+        )
+        .await;
+        println!("{t:?}");
+    }
+
+    #[tokio::test]
+    async fn test_get_pools() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let t = crate::dbsync::get_pools(dp.provider()).await;
+        println!("{t:?}");
+    }
+
+    #[tokio::test]
+    async fn test_epoch_nonce() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let t = crate::dbsync::epoch_nonce(dp.provider(), 205)
+            .await
+            .unwrap();
+        println!("Nonce: {}\nEntropy: {:?}", hex::encode(&t.0), t.1);
+    }
+
+    #[tokio::test]
+    async fn test_is_nft() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let t = crate::dbsync::is_nft(
+            dp.provider(),
+            &[
+                "asset1a0q0grruzd3dm2c9ev890zfaytty8tfcl4qt3a",
+                "asset1h3pg9m9arlwl4l8z3dwg3lwg54j70zqdrjhy88",
+                "asset1fqdnvjcwjcck8t34rvjyj8ccdradp5hkzycxpq",
+                "asset1e83uya776dvqjauy270qnj03899hxxant6jp2g",
+            ],
+        )
+        .await
+        .unwrap();
+        assert_eq!(t, vec![true, true, true, false]);
+    }
+
+    #[tokio::test]
+    async fn test_supply() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let t = crate::dbsync::token_supply(
+            dp.provider(),
+            "asset1m099azmatp3f3xehsu4sqvr45jzqafxmm0dra0",
+        )
+        .await
+        .unwrap();
+        assert_eq!(t, Some(bigdecimal::BigDecimal::from(500000000u64)));
     }
 }

@@ -1,0 +1,74 @@
+syntax = "proto3";
+package aya_cardano;
+
+service ChainFollowerRequestService {
+    rpc EpochChangeEvent (EpochRequest) returns (EventResponse);
+    rpc AyaValidatorStatus (ValidatorRequest) returns (StateResponse);
+    rpc AyaValidatorStake (StakeRequest) returns (StateResponse);
+    rpc AyaValidatorRegistrationEvent (ValidatorRequest) returns (EventResponse);
+    rpc AyaValidatorUnregistrationEvent (ValidatorRequest) returns (EventResponse);
+    rpc DeligatorStakeEvent (StakeRequest) returns (EventResponse);
+    rpc DeligatorStaked   (StakeRequest) returns (StateResponse);
+    rpc DeligatorUnstakeEvent (StakeRequest) returns (EventResponse);
+    rpc DeligatorUnbonding (StakeRequest) returns (StateResponse);
+    rpc DeligatorUnbondingEvent (StakeRequest) returns (EventResponse);
+};
+
+enum EpochRequestType {
+    LatestEpochChange = 0;
+    SpecificEpochChange = 1;
+    CurrentEpoch = 2;
+};
+
+message EpochRequest {
+    EpochRequestType type = 1;
+    optional int32 epoch = 2;
+};
+
+enum ValidatorRequestType { 
+    AVStatus = 0;
+    AVStake = 1;
+    AVRegistration = 2;
+    AVUnregistration = 3;
+};
+
+message ValidatorRequest {
+    ValidatorRequestType type = 1;
+    string ennft_fingerprint = 2;
+};
+
+enum StakeRequestType {
+    DelegatorStakeRequest = 0;
+    ValidatorStakeRequest = 1; 
+;
+}
+
+message StakeRequest {
+    StakeRequestType type = 1;
+};
+
+enum EventResponseType {
+    EpochChangeEvent = 0;
+    ValidatorRegistrationEvent = 1;
+    ValidatorUnregistrationEvent = 2;
+    DelegatorStakeEvent = 3;
+    DelegatorUnstakeEvent = 4;
+    DelegatorUnbondingEvent = 5;
+};
+
+message EventResponse {
+    EventResponseType type = 1;
+    string message = 2;
+};
+
+enum StateResponseType {
+    NoStateFound = 0;
+    ValidatorStatusState = 1;
+    ValidatorStakeState = 2;
+    DelegatorStakeState = 3;
+    DelegatorUnbondingState = 4;
+};
+
+message StateResponse {
+    StateResponseType type = 1;
+};

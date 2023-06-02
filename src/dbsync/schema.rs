@@ -101,6 +101,24 @@ table! {
 }
 
 table! {
+    collateral_tx_out (id) {
+        id -> Int8,
+        tx_id -> Int8,
+        index -> Int2,
+        address -> Varchar,
+        address_raw -> Bytea,
+        address_has_script -> Bool,
+        payment_cred -> Nullable<Bytea>,
+        stake_address_id -> Nullable<Int8>,
+        value -> Numeric,
+        data_hash -> Nullable<Bytea>,
+        multi_assets_descr -> Varchar,
+        inline_datum_id -> Nullable<Int8>,
+        reference_script_id -> Nullable<Int8>,
+    }
+}
+
+table! {
     cost_model (id) {
         id -> Int8,
         costs -> Jsonb,
@@ -168,13 +186,11 @@ table! {
         monetary_expand_rate -> Float8,
         treasury_growth_rate -> Float8,
         decentralisation -> Float8,
-        entropy -> Nullable<Bytea>,
         protocol_major -> Int4,
         protocol_minor -> Int4,
         min_utxo_value -> Numeric,
         min_pool_cost -> Numeric,
-        nonce -> Nullable<Bytea>,
-        coins_per_utxo_word -> Nullable<Numeric>,
+        nonce -> Bytea,
         cost_model_id -> Nullable<Int8>,
         price_mem -> Nullable<Float8>,
         price_step -> Nullable<Float8>,
@@ -186,6 +202,8 @@ table! {
         collateral_percent -> Nullable<Int4>,
         max_collateral_inputs -> Nullable<Int4>,
         block_id -> Int8,
+        extra_entropy -> Nullable<Bytea>,
+        coins_per_utxo_size -> Nullable<Numeric>,
     }
 }
 
@@ -413,6 +431,16 @@ table! {
 }
 
 table! {
+    reference_tx_in(id){
+        id -> Int8,
+        tx_in_id -> Int8,
+        tx_out_id -> Int8,
+        tx_out_index -> Int2,
+    }
+
+}
+
+table! {
     reserve (id) {
         id -> Int8,
         addr_id -> Int8,
@@ -637,8 +665,13 @@ joinable!(tx_out -> tx (tx_id));
 joinable!(withdrawal -> redeemer (redeemer_id));
 joinable!(withdrawal -> stake_address (addr_id));
 joinable!(withdrawal -> tx (tx_id));
+joinable!(reference_tx_in -> tx (tx_in_id));
+joinable!(reference_tx_in -> tx_out (tx_out_id));
+joinable!(collateral_tx_out -> tx (tx_id));
 
 allow_tables_to_appear_in_same_query!(
+    collateral_tx_out,
+    reference_tx_in,
     unspent_utxos,
     utxo_view,
     ada_pots,

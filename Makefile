@@ -1,11 +1,13 @@
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
 GOOGLEREG=europe-west2-docker.pkg.dev
-PROJECT_GOOGLE=mystic-torus-339723
-REPO_GOOGLE=drasil-mainnet
+PROJECT_GOOGLE=tqjwvihfudnb
+REPO_GOOGLE=wm-staging-registry
 PROJECT=drasil
 PROJECT_MAINNET=mdrsl
 IMAGE=cdp
 VERSION=v1.1
+
+# europe-west2-docker.pkg.dev/tqjwvihfudnb/wm-staging-registry
 
 build:
 	cargo update

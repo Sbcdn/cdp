@@ -10,6 +10,7 @@ use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use dcslc::TransactionUnspentOutputs;
 use diesel::prelude::*;
+use log::debug;
 /// get all tokens of an utxo
 
 pub fn get_utxo_tokens(
@@ -811,9 +812,9 @@ pub async fn token_supply(
     dbs: &DBSyncProvider,
     fingerprint: &str,
 ) -> Result<Option<BigDecimal>, DataProviderDBSyncError> {
-    multi_asset::table
-        .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
-        .inner_join(utxo_view::table.on(utxo_view::id.eq(ma_tx_out::tx_out_id)))
+    utxo_view::table
+        .inner_join(ma_tx_out::table.on(utxo_view::id.eq(ma_tx_out::tx_out_id)))
+        .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .filter(multi_asset::fingerprint.eq(fingerprint))
         .select(diesel::dsl::sum(ma_tx_out::quantity.nullable()))
         .first::<Option<BigDecimal>>(&mut dbs.connect()?)
@@ -824,13 +825,27 @@ pub async fn check_nft_supply(
     dbs: &DBSyncProvider,
     fingerprint: &str,
 ) -> Result<bool, DataProviderDBSyncError> {
-    if let Ok(o) = multi_asset::table
-        .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
-        .inner_join(utxo_view::table.on(utxo_view::id.eq(ma_tx_out::tx_out_id)))
-        .filter(multi_asset::fingerprint.eq(fingerprint))
-        .select(ma_tx_out::quantity.nullable())
+    /*
+    if let Ok(o) = utxo_view::table
+         .inner_join(ma_tx_out::table.on(utxo_view::id.eq(ma_tx_out::tx_out_id)))
+         .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+         .filter(multi_asset::fingerprint.eq(fingerprint))
+         .select(ma_tx_out::id)
+         .limit(2)
+         .load::<i64>(&mut dbs.connect()?)
+         .map_err(|_| DataProviderDBSyncError::RequestValueNotFound(fingerprint.to_owned()))
+     {
+         if o.len() == 1 {
+             return Ok(true);
+         }
+     }
+     */
+    debug!("check NFT supply called for {}", fingerprint);
+    if let Ok(o) = utxo_token_view::table
+        .filter(utxo_token_view::fingerprint.eq(fingerprint))
+        .select(utxo_token_view::id)
         .limit(2)
-        .load::<Option<BigDecimal>>(&mut dbs.connect()?)
+        .load::<i64>(&mut dbs.connect()?)
         .map_err(|_| DataProviderDBSyncError::RequestValueNotFound(fingerprint.to_owned()))
     {
         if o.len() == 1 {
@@ -974,6 +989,7 @@ pub async fn txo_by_id_index(
             tx_out::reference_script_id,
         ))
         .first::<crate::dbsync::models::TxOut>(&mut dbs.connect()?)?;
+    debug!("calling to_txo for: {:?}", txo);
     txo.to_txuo(dbs)
 }
 
@@ -1007,13 +1023,14 @@ pub async fn get_tx_inputs(
     dbs: &DBSyncProvider,
     hash: &str,
 ) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
+    debug!("get_tx_inputs");
     let input_references: Vec<_> = tx::table
         .inner_join(tx_in::table.on(tx_in::tx_in_id.eq(tx::id)))
         .filter(tx::hash.eq(hex::decode(hash)?))
         .select((tx_in::tx_out_id, tx_in::tx_out_index))
         .load::<(i64, i16)>(&mut dbs.connect()?)?;
     let mut temp = Vec::<(i64, i16)>::new();
-
+    debug!("enrich_tx_inputs");
     for i in input_references.into_iter() {
         let tx_out = tx_out::table
             .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
@@ -1026,6 +1043,7 @@ pub async fn get_tx_inputs(
     let mut txins = TransactionUnspentOutputs::new();
     for i in temp.into_iter() {
         // get utxos by hash and index
+        debug!("txo by index");
         let txo = txo_by_id_index(dbs, i.0, i.1).await?;
         txins.add(&txo)
     }
@@ -1391,7 +1409,7 @@ pub async fn epoch_nonce(
 //ToDo:
 //temporary declared here, common type library needs to be created
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Message {
+pub struct EpochChangeResponse {
     pub last_epoch: u64,
     pub last_blockhash: String,
     pub last_slot: u64,
@@ -1405,7 +1423,7 @@ pub struct Message {
 pub async fn epoch_change(
     dbs: &DBSyncProvider,
     epoch: Option<i32>,
-) -> Result<Message, DataProviderDBSyncError> {
+) -> Result<EpochChangeResponse, DataProviderDBSyncError> {
     // select b.id, b.hash, b.slot_no, b.block_no, b.previous_id, ep.nonce, ep.extra_entropy from block b
     // left join epoch_param ep on ep.epoch_no  = b.epoch_no
     // where b.block_no = (select min(block_no-1) from block b where b.epoch_no = 209) or b.block_no = (select min(block_no) from block b where b.epoch_no = 209)
@@ -1477,7 +1495,7 @@ pub async fn epoch_change(
         })
         .collect();
 
-    let out = Message {
+    let out = EpochChangeResponse {
         last_epoch: out[1].5.unwrap() as u64,
         last_blockhash: out[1].1.clone(),
         last_slot: out[1].2.unwrap() as u64,

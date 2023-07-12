@@ -1,5 +1,6 @@
 syntax = "proto3";
 package aya_cardano;
+//import "google/protobuf/struct.proto";
 
 service ChainFollowerRequestService {
     rpc EpochChangeEvent (EpochRequest) returns (EventResponse);
@@ -22,7 +23,7 @@ enum EpochRequestType {
 
 message EpochRequest {
     EpochRequestType type = 1;
-    optional int32 epoch = 2;
+    int32 epoch = 2;
 };
 
 enum ValidatorRequestType { 
@@ -48,18 +49,38 @@ message StakeRequest {
 };
 
 enum EventResponseType {
-    EpochChangeEvent = 0;
-    ValidatorRegistrationEvent = 1;
-    ValidatorUnregistrationEvent = 2;
-    DelegatorStakeEvent = 3;
-    DelegatorUnstakeEvent = 4;
-    DelegatorUnbondingEvent = 5;
+    Error = 0;
+    EpochChangeEvent = 1;
+    ValidatorRegistrationEvent = 2;
+    ValidatorUnregistrationEvent = 3;
+    DelegatorStakeEvent = 4;
+    DelegatorUnstakeEvent = 5;
+    DelegatorUnbondingEvent = 6;
 };
 
 message EventResponse {
-    EventResponseType type = 1;
-    string message = 2;
+    EventResponseType message_type = 1;
+    oneof message {
+        EpochChangeResponse epoch_change = 2;
+        CurrentEpochResponse current_epoch = 3;
+        string string = 99;
+    };
 };
+
+message EpochChangeResponse {
+    uint64 last_epoch = 1;
+    string last_blockhash = 2;
+    uint64 last_slot = 3;
+    uint64 new_epoch = 4;
+    uint64 new_slot = 5;
+    string new_blockhash = 6;
+    string epoch_nonce = 7;
+    string extra_entropy = 8;
+}
+
+message CurrentEpochResponse {
+    int32 current_epoch_number = 1;
+}
 
 enum StateResponseType {
     NoStateFound = 0;

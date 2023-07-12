@@ -183,7 +183,7 @@ pub async fn serve(dbsync_url: Option<String>) -> Result<(), error::RESTError> {
             "Sec-GPC",
         ]);
 
-    let addr = "[::1]:50051".parse::<SocketAddr>().unwrap();
+    let addr = "0.0.0.0:50051".parse::<SocketAddr>().unwrap();
     let rpc_server = super::grpc::AyaCardanoRPCServer::default();
 
     let mut set = vec![]; //tokio::task::JoinSet::new();

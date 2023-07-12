@@ -4,6 +4,7 @@ use aya_cardano::chain_follower_request_service_server::{
     ChainFollowerRequestService, ChainFollowerRequestServiceServer,
 };
 use aya_cardano::{
+    event_response::Message, CurrentEpochResponse, EpochChangeResponse as ProtoEpochChangeResponse,
     EpochRequest, EpochRequestType, EventResponse, EventResponseType, StakeRequest,
     StakeRequestType, StateResponse, StateResponseType, ValidatorRequest, ValidatorRequestType,
 };
@@ -40,22 +41,58 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                 let resp = epoch_change(dp.provider(), Some(current_epoch))
                     .await
                     .unwrap();
-                serde_json::json!(resp).to_string()
+                EventResponse {
+                    message_type: EventResponseType::EpochChangeEvent.into(),
+                    message: Some(Message::EpochChange(ProtoEpochChangeResponse {
+                        last_epoch: resp.last_epoch,
+                        last_blockhash: resp.last_blockhash,
+                        last_slot: resp.last_slot,
+                        new_epoch: resp.new_epoch,
+                        new_slot: resp.new_slot,
+                        new_blockhash: resp.new_blockhash,
+                        epoch_nonce: resp.epoch_nonce,
+                        extra_entropy: if let Some(s) = resp.extra_entropy {
+                            s
+                        } else {
+                            "".to_string()
+                        },
+                    })),
+                }
             }
             EpochRequestType::CurrentEpoch => {
-                serde_json::json!(dp.current_epoch().await.unwrap()).to_string()
+                let resp = dp.current_epoch().await.unwrap();
+                EventResponse {
+                    message_type: EventResponseType::EpochChangeEvent.into(),
+                    message: Some(Message::CurrentEpoch(CurrentEpochResponse {
+                        current_epoch_number: resp,
+                    })),
+                }
             }
             EpochRequestType::SpecificEpochChange => {
-                serde_json::json!(epoch_change(dp.provider(), None).await.unwrap()).to_string()
+                let resp = epoch_change(dp.provider(), Some(rtype.epoch))
+                    .await
+                    .unwrap();
+                EventResponse {
+                    message_type: EventResponseType::EpochChangeEvent.into(),
+                    message: Some(Message::EpochChange(ProtoEpochChangeResponse {
+                        last_epoch: resp.last_epoch,
+                        last_blockhash: resp.last_blockhash,
+                        last_slot: resp.last_slot,
+                        new_epoch: resp.new_epoch,
+                        new_slot: resp.new_slot,
+                        new_blockhash: resp.new_blockhash,
+                        epoch_nonce: resp.epoch_nonce,
+                        extra_entropy: if let Some(s) = resp.extra_entropy {
+                            s
+                        } else {
+                            "".to_string()
+                        },
+                    })),
+                }
             }
         };
         println!("Output: {output:?}");
-        let reply = EventResponse {
-            r#type: EventResponseType::EpochChangeEvent.into(),
-            message: serde_json::json!(output).to_string(),
-        };
-        println!("Response: {reply:?}");
-        Ok(Response::new(reply)) // Send back our formatted greeting
+        Ok(Response::new(output))
     }
 
     async fn aya_validator_status(
@@ -91,8 +128,8 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         println!("Got a request: {request:?}");
 
         let reply = EventResponse {
-            r#type: EventResponseType::ValidatorRegistrationEvent.into(),
-            message: "ValidatorRegistrationEvent".to_string(),
+            message_type: EventResponseType::ValidatorRegistrationEvent.into(),
+            message: Some(Message::String("ValidatorRegistrationEvent".to_string())),
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
@@ -105,8 +142,8 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         println!("Got a request: {request:?}");
 
         let reply = EventResponse {
-            r#type: EventResponseType::ValidatorUnregistrationEvent.into(),
-            message: "ValidatorUnregistrationEvent".to_string(),
+            message_type: EventResponseType::ValidatorUnregistrationEvent.into(),
+            message: Some(Message::String("ValidatorUnregistrationEvent".to_string())),
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
@@ -119,8 +156,8 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         println!("Got a request: {request:?}");
 
         let reply = EventResponse {
-            r#type: EventResponseType::DelegatorStakeEvent.into(),
-            message: "DelegatorStakeEvent".to_string(),
+            message_type: EventResponseType::DelegatorStakeEvent.into(),
+            message: Some(Message::String("DelegatorStakeEvent".to_string())),
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
@@ -146,8 +183,8 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         println!("Got a request: {request:?}");
 
         let reply = EventResponse {
-            r#type: EventResponseType::DelegatorUnstakeEvent.into(),
-            message: "DelegatorUnstakeEvent".to_string(),
+            message_type: EventResponseType::DelegatorUnstakeEvent.into(),
+            message: Some(Message::String("DelegatorUnstakeEvent".to_string())),
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
@@ -173,8 +210,8 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         println!("Got a request: {request:?}");
 
         let reply = EventResponse {
-            r#type: EventResponseType::DelegatorUnbondingEvent.into(),
-            message: "DelegatorUnbondingEvent".to_string(),
+            message_type: EventResponseType::DelegatorUnbondingEvent.into(),
+            message: Some(Message::String("DelegatorUnbondingEvent".to_string())),
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting

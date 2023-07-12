@@ -6,6 +6,8 @@ use std::fmt;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 
+use crate::models::AssetHandle;
+
 #[derive(Serialize, Debug)]
 pub(crate) struct ErrorResponse {
     pub message: String,
@@ -82,6 +84,29 @@ pub type Clients = Arc<Mutex<HashMap<String, Client>>>;
 pub type LocalTxCache = Arc<Mutex<HashMap<String, TxCacheItem>>>;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum WSCom {
+pub struct WSResponse {
+    pub message_id: String,
+    pub response: WSResponseTypes,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum WSResponseTypes {
+    VTokenInfoView(Vec<crate::models::TokenInfoView>),
+    VAssetHandle(Vec<AssetHandle>),
+    VBool(Vec<bool>),
+    String(String),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WSMessage {
+    pub message_id: String,
+    pub request: WSRequest,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum WSRequest {
     Alive,
+    IsNFT(Vec<String>),
+    AddressAssetHandles(Vec<String>),
+    MintMetadata(Vec<String>),
 }

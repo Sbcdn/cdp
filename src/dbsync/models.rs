@@ -769,12 +769,21 @@ impl TxOut {
         let tx = tx::table
             .filter(tx::id.eq(&self.tx_id))
             .first::<Tx>(&mut dbs.connect()?)?;
-
+        log::debug!("try to create input utxo for tx {tx:?}");
         let input = cardano_serialization_lib::TransactionInput::new(
-            &cardano_serialization_lib::crypto::TransactionHash::from_bytes(tx.hash.clone())?,
+            &cardano_serialization_lib::crypto::TransactionHash::from_bytes(tx.hash.clone())
+                .map_err(|_| {
+                    DataProviderDBSyncError::Custom(
+                        format!("Could not restore TransactionHash from bytes:  {:?}", tx)
+                            .to_string(),
+                    )
+                })?,
             self.index as u32,
         );
+        log::debug!("input is: {input:?}");
+        log::debug!("try to decode address: {0:?}", self.address);
         let address = dcslc::addr_from_str(&self.address)?;
+        log::debug!("Address is: {address:?}");
         let coin = match self.value.to_u64() {
             Some(c) => c,
             None => {
@@ -787,11 +796,11 @@ impl TxOut {
                 ))
             }
         };
-
+        log::debug!("try to create ser lib coin Value from : {coin:?}");
         let mut amount = cardano_serialization_lib::utils::Value::new(
             &cardano_serialization_lib::utils::to_bignum(coin),
         );
-
+        log::debug!("try to create tokens, Ada amount set Value from : {amount:?}");
         let tokens = super::api::get_utxo_tokens(&dbs, self.tx_id, self.index)?;
         let mut ma = cardano_serialization_lib::MultiAsset::new();
         for tok in tokens {

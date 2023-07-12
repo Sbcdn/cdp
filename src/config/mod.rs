@@ -207,6 +207,7 @@ impl ConfigRoot {
         std::env::set_var("TX_SUBMIT_ENDPOINT2", &self.connectivity.submit_endpoint_2);
         std::env::set_var("TX_SUBMIT_ENDPOINT3", &self.connectivity.submit_endpoint_3);
         std::env::set_var("PPPATH", self.connectivity.protocoal_parameter_path.clone());
+        std::env::set_var("JWT_PUB_KEY", self.connectivity.cert_pub_key.clone());
     }
 }
 
@@ -219,6 +220,8 @@ mod connectivity {
         pub submit_endpoint_2: String,
         pub submit_endpoint_3: String,
         pub protocoal_parameter_path: String,
+        pub cert_private_key: Option<String>,
+        pub cert_pub_key: String,
     }
 }
 

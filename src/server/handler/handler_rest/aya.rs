@@ -25,11 +25,7 @@ pub struct EpochMessage {
 
 /// Get epoch change event from epoch x to epoch y
 #[get("/epoch/change/from/{epoch1}/{epoch2}")]
-#[openapi(
-    id = "aya.epoch.change.from",
-    tags("AyA Data Provider"),
-    summary = "Retrieve minitng metadata for the specified token. expects fingerprint"
-)]
+#[openapi(id = "aya.epoch.change.from", tags("AyA Data Provider"), summary = "")]
 pub async fn retry_epoch_event(
     epoch1: String,
     epoch2: String,
@@ -41,7 +37,9 @@ pub async fn retry_epoch_event(
 
     //select * from block b where b.block_no = (select min(block_no-1) from block b where b.epoch_no = 209) or b.block_no = (select max(block_no) from block b where b.epoch_no = 209) order by block_no DESC;
 
-    Ok(rweb::Json::from(serde_json::json!(())))
+    Ok(rweb::Json::from(serde_json::json!(
+        "Not implemented use RPC"
+    )))
 }
 
 /// Get latest epoch change event
@@ -49,7 +47,7 @@ pub async fn retry_epoch_event(
 #[openapi(
     id = "aya.epoch.change.latest",
     tags("AyA Data Provider"),
-    summary = "Retrieve minitng metadata for the specified token. expects fingerprint"
+    summary = ""
 )]
 pub async fn latest_epoch_change(
     #[filter = "with_auth"] _user_id: String,
@@ -60,16 +58,14 @@ pub async fn latest_epoch_change(
 
     //select * from block b where b.block_no = (select min(block_no-1) from block b where b.epoch_no = 209) or b.block_no = (select max(block_no) from block b where b.epoch_no = 209) order by block_no DESC;
 
-    Ok(rweb::Json::from(serde_json::json!(())))
+    Ok(rweb::Json::from(serde_json::json!(
+        "Not implemented use RPC"
+    )))
 }
 
 /// Get current epoch number and nonce
 #[get("/epoch/current/")]
-#[openapi(
-    id = "aya.epoch.current",
-    tags("AyA Data Provider"),
-    summary = "Retrieve minitng metadata for the specified token. expects fingerprint"
-)]
+#[openapi(id = "aya.epoch.current", tags("AyA Data Provider"), summary = "")]
 pub async fn current_epoch(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
@@ -79,5 +75,7 @@ pub async fn current_epoch(
 
     //select * from block b where b.block_no = (select min(block_no-1) from block b where b.epoch_no = 209) or b.block_no = (select max(block_no) from block b where b.epoch_no = 209) order by block_no DESC;
 
-    Ok(rweb::Json::from(serde_json::json!(())))
+    Ok(rweb::Json::from(serde_json::json!(
+        "Not implemented use RPC"
+    )))
 }

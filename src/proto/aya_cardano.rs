@@ -3,8 +3,8 @@
 pub struct EpochRequest {
     #[prost(enumeration = "EpochRequestType", tag = "1")]
     pub r#type: i32,
-    #[prost(int32, optional, tag = "2")]
-    pub epoch: ::core::option::Option<i32>,
+    #[prost(int32, tag = "2")]
+    pub epoch: i32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -24,9 +24,48 @@ pub struct StakeRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EventResponse {
     #[prost(enumeration = "EventResponseType", tag = "1")]
-    pub r#type: i32,
+    pub message_type: i32,
+    #[prost(oneof = "event_response::Message", tags = "2, 3, 99")]
+    pub message: ::core::option::Option<event_response::Message>,
+}
+/// Nested message and enum types in `EventResponse`.
+pub mod event_response {
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Message {
+        #[prost(message, tag = "2")]
+        EpochChange(super::EpochChangeResponse),
+        #[prost(message, tag = "3")]
+        CurrentEpoch(super::CurrentEpochResponse),
+        #[prost(string, tag = "99")]
+        String(::prost::alloc::string::String),
+    }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EpochChangeResponse {
+    #[prost(uint64, tag = "1")]
+    pub last_epoch: u64,
     #[prost(string, tag = "2")]
-    pub message: ::prost::alloc::string::String,
+    pub last_blockhash: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub last_slot: u64,
+    #[prost(uint64, tag = "4")]
+    pub new_epoch: u64,
+    #[prost(uint64, tag = "5")]
+    pub new_slot: u64,
+    #[prost(string, tag = "6")]
+    pub new_blockhash: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub epoch_nonce: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub extra_entropy: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CurrentEpochResponse {
+    #[prost(int32, tag = "1")]
+    pub current_epoch_number: i32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -124,12 +163,13 @@ impl StakeRequestType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum EventResponseType {
-    EpochChangeEvent = 0,
-    ValidatorRegistrationEvent = 1,
-    ValidatorUnregistrationEvent = 2,
-    DelegatorStakeEvent = 3,
-    DelegatorUnstakeEvent = 4,
-    DelegatorUnbondingEvent = 5,
+    Error = 0,
+    EpochChangeEvent = 1,
+    ValidatorRegistrationEvent = 2,
+    ValidatorUnregistrationEvent = 3,
+    DelegatorStakeEvent = 4,
+    DelegatorUnstakeEvent = 5,
+    DelegatorUnbondingEvent = 6,
 }
 impl EventResponseType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -138,6 +178,7 @@ impl EventResponseType {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
+            EventResponseType::Error => "Error",
             EventResponseType::EpochChangeEvent => "EpochChangeEvent",
             EventResponseType::ValidatorRegistrationEvent => "ValidatorRegistrationEvent",
             EventResponseType::ValidatorUnregistrationEvent => {
@@ -151,6 +192,7 @@ impl EventResponseType {
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
+            "Error" => Some(Self::Error),
             "EpochChangeEvent" => Some(Self::EpochChangeEvent),
             "ValidatorRegistrationEvent" => Some(Self::ValidatorRegistrationEvent),
             "ValidatorUnregistrationEvent" => Some(Self::ValidatorUnregistrationEvent),

@@ -48,6 +48,16 @@ table! {
 }
 
 table! {
+    utxo_token_view (id){
+        id -> Int8,
+        policy -> Bytea,
+        name -> Bytea,
+        fingerprint -> Varchar,
+        quantity -> Numeric,
+    }
+}
+
+table! {
     ada_pots (id) {
         id -> Int8,
         slot_no -> Int4,

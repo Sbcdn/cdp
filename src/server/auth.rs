@@ -12,7 +12,7 @@ lazy_static! {
     static ref JWT_SECRET_KEY: String =
         std::env::var("JWT_KEY").unwrap_or_else(|_| "secret_key".to_string());
     static ref JWT_PUB_KEY: String =
-        std::env::var("JWT_PUB_KEY").unwrap_or_else(|_| "-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElaXuWqmOcE8oS7NQrV51u1U+0px2Hlrrh/gf46du83u2amBuI6VDlIcb5Eu097IvmiWjBGKQYc4HZ5neBGeAdA==-----END PUBLIC KEY-----".to_string());
+        std::env::var("JWT_PUB_KEY").unwrap_or_else(|_| "pub_key".to_string());
 }
 
 const BEARER: &str = "Bearer ";

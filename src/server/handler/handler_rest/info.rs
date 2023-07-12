@@ -144,6 +144,7 @@ pub async fn tx_history_discover(
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
+    debug!("Try to discover Transaction: {:?}", hash);
     let tx = crate::dbsync::discover_transaction(dp.provider(), &hash).await;
 
     match tx {
@@ -173,6 +174,15 @@ pub async fn handle_get_asset_for_addresses(
             );
         }
     };
+
+    Ok(rweb::Json::from(serde_json::json!(
+        get_asset_for_addresses(&addresses).await?
+    )))
+}
+
+pub(crate) async fn get_asset_for_addresses(
+    addresses: &Vec<String>,
+) -> Result<Vec<AssetHandle>, Rejection> {
     debug!("{addresses:?}");
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
         db_path: std::env::var("DBSYNC_URL").unwrap(),
@@ -180,7 +190,7 @@ pub async fn handle_get_asset_for_addresses(
 
     let mut utxos = TransactionUnspentOutputs::new();
 
-    for a in &addresses {
+    for a in addresses {
         let us = dp.script_utxos(a).await.unwrap();
         utxos.merge(us);
     }
@@ -252,8 +262,7 @@ pub async fn handle_get_asset_for_addresses(
             handles_summed.push(sum)
         }
     }
-
-    Ok(rweb::Json::from(serde_json::json!(handles_summed)))
+    Ok(handles_summed)
 }
 
 #[get("/address/stake/assets/")]
@@ -451,14 +460,17 @@ pub async fn is_nft(
             );
         }
     };
+    debug!("Creatign dataprovider instance");
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
+    debug!("Try to execute query");
     let supply = crate::dbsync::is_nft(
         dp.provider(),
         &f.iter().map(|n| &**n).collect::<Vec<&str>>()[..],
     )
     .await;
+    debug!("Received query results: {supply:?}");
     if let Err(e) = &supply {
         return make_error(
             format!("Could not get supply for {f:?}, error: {e}"),

@@ -1,5 +1,5 @@
 use super::error::DataProviderDBSyncError;
-use super::models::{PoolHash, PoolRetire, UnspentUtxo, UtxoView};
+use super::models::{PoolHash, PoolRetire, UnspentUtxo, UtxoView, Rewardtype};
 use super::schema::*;
 use crate::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, ScriptView, StakeDelegationView,
@@ -1279,6 +1279,129 @@ pub async fn tx_collateral_out(
         }
     }
     Ok(txout)
+}
+
+// select * from epoch_stake es 
+// inner join pool_hash ph on es.pool_id = ph.id 
+// where ph."view" = 'pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c' and es.epoch_no = 289;
+
+
+// select * from epoch_stake es 
+// inner join stake_address sa on es.addr_id = sa.id 
+// where sa."view" = 'stake_test17qqen8xp77mvt6pj7faxe2qrhamwwy6a9xgfnjp47e4lxdsqhevtd' and es.epoch_no = 289;
+
+pub async fn retrieve_staked_amount(
+    dbs: &DBSyncProvider,
+    pool_id: i64,
+    stake_address: &str,
+) -> Result<Option<Vec<BigDecimal>>, DataProviderDBSyncError> {
+    Ok(
+        epoch_stake::table
+            .inner_join(stake_address::table.on(epoch_stake::pool_id.eq(stake_address::id)))
+            .filter(stake_address::view.eq(stake_address))
+            .filter(epoch_stake::pool_id.eq(pool_id))
+            .select(epoch_stake::amount)
+            .load::<BigDecimal>(&mut dbs.connect()?)
+            .ok()
+    )
+}
+
+pub async fn retrieve_generated_rewards(
+    dbs: &DBSyncProvider,
+    hash: &str,
+) -> Result<Option<Vec<BigDecimal>>, DataProviderDBSyncError> {
+    Ok(reward::table
+            .inner_join(stake_address::table.on(reward::addr_id.eq(stake_address::id)))
+            .inner_join(tx::table.on(stake_address::registered_tx_id.eq(tx::id)))
+            .filter(tx::hash.eq(hex::decode(hash)?))
+            .select(reward::amount)
+            .load::<BigDecimal>(&mut dbs.connect()?)
+            .ok()
+    )
+}
+
+// projected rewards for the given stake_address from the given pool
+// source: https://docs.cardano.org/learn/pledging-rewards/
+pub async fn retrieve_rewards_next_epoch(
+    dbs: &DBSyncProvider,
+    hash: &str, // latest transaction
+    stake_address: String,
+    pool_address: String,
+) -> Result<BigDecimal, DataProviderDBSyncError> {
+    // R - total available rewards for this epoch
+    let R = ada_pots::table
+        .left_join(block::table.on(block::id.eq(ada_pots::block_id)))
+        .left_join(tx::table.on(block::id.eq(tx::block_id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select(ada_pots::rewards)
+        .first::<BigDecimal>(&mut dbs.connect()?)
+        .ok()
+        .unwrap();
+
+    // a0 - pledge influence factor (can be between 0 and infinity)    
+    let a0 = BigDecimal::from_f64(
+            epoch_param::table
+            .left_join(block::table.on(epoch_param::block_id.eq(block::id)))
+            .left_join(tx::table.on(tx::block_id.eq(block::id)))
+            .filter(tx::hash.eq(hex::decode(hash)?))
+            .select(epoch_param::influence)
+            .first::<f64>(&mut dbs.connect()?)
+            .ok()
+            .unwrap()
+        ).unwrap();
+
+    // z0 - relative pool saturation size, i.e. 0.5% based on a number of desired pools (k=200)
+    let total_stake = ada_pots::table
+        .left_join(block::table.on(ada_pots::block_id.eq(block::id)))
+        .left_join(tx::table.on(tx::block_id.eq(block::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select(ada_pots::deposits)
+        .first::<BigDecimal>(&mut dbs.connect()?)
+        .ok()
+        .unwrap();
+    let one = BigDecimal::from(1);
+    let pool_count = epoch_param::table
+        .left_join(block::table.on(epoch_param::block_id.eq(block::id)))
+        .left_join(tx::table.on(tx::block_id.eq(block::id)))
+        .filter(tx::hash.eq(hex::decode(hash)?))
+        .select(epoch_param::optimal_pool_count)
+        .first::<i32>(&mut dbs.connect()?)
+        .ok()
+        .unwrap();
+    let z0 = BigDecimal::from((one.clone()-a0.clone())*total_stake/pool_count);
+
+    // σ - stake delegated to the pool (including stake pledged by the owners and stake delegated by others)
+    let sigma = epoch_stake::table
+        .left_join(pool_hash::table.on(pool_hash::id.eq(epoch_stake::pool_id)))
+        .left_join(stake_address::table.on(epoch_stake::addr_id.eq(stake_address::id)))
+        .left_join(tx::table.on(stake_address::registered_tx_id.eq(tx::id)))
+        .filter(pool_hash::view.eq(pool_address))
+        .select(epoch_stake::amount)
+        .load::<BigDecimal>(&mut dbs.connect()?)
+        .ok()
+        .unwrap()
+        .iter()
+        .sum();
+
+    // σ’ = min(σ, z0) - as σ, but capped at z0
+    let sigma_ = if sigma < z0 {sigma} else {z0.clone()}; 
+
+    // s - stake pledged by the owners
+    let s = BigDecimal::from_f64(0.5).unwrap(); 
+
+    // s’ = min(s, z0) - as s, but capped at z0
+    let s_ = if s < z0 {s} else {z0.clone()}; 
+
+    // reward formula: https://docs.cardano.org/learn/pledging-rewards/
+    let rewards = ( R / ( one + a0.clone() ) )*(
+        sigma_.clone()
+        +
+        ( s_.clone() * a0 / z0.clone() )
+        *
+        ( sigma_.clone() - ( s_ / z0.clone() ) * ( z0 - sigma_ ))
+    );
+
+    Ok(rewards)
 }
 
 pub async fn discover_transaction(

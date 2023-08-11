@@ -1285,7 +1285,6 @@ pub async fn tx_collateral_out(
 // inner join pool_hash ph on es.pool_id = ph.id 
 // where ph."view" = 'pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c' and es.epoch_no = 289;
 
-
 // select * from epoch_stake es 
 // inner join stake_address sa on es.addr_id = sa.id 
 // where sa."view" = 'stake_test17qqen8xp77mvt6pj7faxe2qrhamwwy6a9xgfnjp47e4lxdsqhevtd' and es.epoch_no = 289;
@@ -1295,44 +1294,46 @@ pub async fn retrieve_staked_amount(
     pool_id: i64,
     stake_address: &str,
 ) -> Result<Option<Vec<BigDecimal>>, DataProviderDBSyncError> {
-    Ok(
-        epoch_stake::table
-            .inner_join(stake_address::table.on(epoch_stake::pool_id.eq(stake_address::id)))
-            .filter(stake_address::view.eq(stake_address))
-            .filter(epoch_stake::pool_id.eq(pool_id))
-            .select(epoch_stake::amount)
-            .load::<BigDecimal>(&mut dbs.connect()?)
-            .ok()
+    Ok(epoch_stake::table
+        .inner_join(stake_address::table.on(epoch_stake::pool_id.eq(stake_address::id)))
+        .filter(stake_address::view.eq(stake_address))
+        .filter(epoch_stake::pool_id.eq(pool_id))
+        .select(epoch_stake::amount)
+        .load::<BigDecimal>(&mut dbs.connect()?)
+        .ok()
     )
 }
 
 pub async fn retrieve_generated_rewards(
     dbs: &DBSyncProvider,
-    hash: &str,
+    addr_id: i64,
 ) -> Result<Option<Vec<BigDecimal>>, DataProviderDBSyncError> {
     Ok(reward::table
-            .inner_join(stake_address::table.on(reward::addr_id.eq(stake_address::id)))
-            .inner_join(tx::table.on(stake_address::registered_tx_id.eq(tx::id)))
-            .filter(tx::hash.eq(hex::decode(hash)?))
-            .select(reward::amount)
-            .load::<BigDecimal>(&mut dbs.connect()?)
-            .ok()
+        .filter(reward::addr_id.eq(addr_id))
+        .select(reward::amount)
+        .load::<BigDecimal>(&mut dbs.connect()?)
+        .ok()
     )
 }
 
-// projected rewards for the given stake_address from the given pool
-// source: https://docs.cardano.org/learn/pledging-rewards/
-pub async fn retrieve_rewards_next_epoch(
+// type projection_parameters = (R, one, a0, sigma_, s_, z0); 
+
+// input for "retrieve_rewards_next_epoch" function
+pub async fn reward_projection_parameters(
     dbs: &DBSyncProvider,
-    hash: &str, // latest transaction
-    stake_address: String,
+    current_epoch: i32, // latest transaction
     pool_address: String,
-) -> Result<BigDecimal, DataProviderDBSyncError> {
+) -> Result<(    
+    BigDecimal, // R
+    BigDecimal, // one
+    BigDecimal, // a0
+    BigDecimal, // sigma
+    BigDecimal, // s_
+    BigDecimal, // z0
+), DataProviderDBSyncError>{
     // R - total available rewards for this epoch
     let R = ada_pots::table
-        .left_join(block::table.on(block::id.eq(ada_pots::block_id)))
-        .left_join(tx::table.on(block::id.eq(tx::block_id)))
-        .filter(tx::hash.eq(hex::decode(hash)?))
+        .filter(ada_pots::epoch_no.eq(current_epoch))
         .select(ada_pots::rewards)
         .first::<BigDecimal>(&mut dbs.connect()?)
         .ok()
@@ -1340,42 +1341,41 @@ pub async fn retrieve_rewards_next_epoch(
 
     // a0 - pledge influence factor (can be between 0 and infinity)    
     let a0 = BigDecimal::from_f64(
-            epoch_param::table
-            .left_join(block::table.on(epoch_param::block_id.eq(block::id)))
-            .left_join(tx::table.on(tx::block_id.eq(block::id)))
-            .filter(tx::hash.eq(hex::decode(hash)?))
+        epoch_param::table
+            .filter(epoch_param::epoch_no.eq(current_epoch))
             .select(epoch_param::influence)
             .first::<f64>(&mut dbs.connect()?)
             .ok()
             .unwrap()
-        ).unwrap();
+    ).unwrap();
 
     // z0 - relative pool saturation size, i.e. 0.5% based on a number of desired pools (k=200)
     let total_stake = ada_pots::table
-        .left_join(block::table.on(ada_pots::block_id.eq(block::id)))
-        .left_join(tx::table.on(tx::block_id.eq(block::id)))
-        .filter(tx::hash.eq(hex::decode(hash)?))
+        .filter(ada_pots::epoch_no.eq(current_epoch))
         .select(ada_pots::deposits)
         .first::<BigDecimal>(&mut dbs.connect()?)
         .ok()
         .unwrap();
     let one = BigDecimal::from(1);
     let pool_count = epoch_param::table
-        .left_join(block::table.on(epoch_param::block_id.eq(block::id)))
-        .left_join(tx::table.on(tx::block_id.eq(block::id)))
-        .filter(tx::hash.eq(hex::decode(hash)?))
+        .filter(epoch_param::epoch_no.eq(current_epoch))
         .select(epoch_param::optimal_pool_count)
         .first::<i32>(&mut dbs.connect()?)
         .ok()
         .unwrap();
     let z0 = BigDecimal::from((one.clone()-a0.clone())*total_stake/pool_count);
 
-    // σ - stake delegated to the pool (including stake pledged by the owners and stake delegated by others)
-    let sigma = epoch_stake::table
-        .left_join(pool_hash::table.on(pool_hash::id.eq(epoch_stake::pool_id)))
-        .left_join(stake_address::table.on(epoch_stake::addr_id.eq(stake_address::id)))
-        .left_join(tx::table.on(stake_address::registered_tx_id.eq(tx::id)))
+    let pool_id = pool_hash::table
         .filter(pool_hash::view.eq(pool_address))
+        .select(pool_hash::id)
+        .first::<i64>(&mut dbs.connect()?)
+        .ok()
+        .unwrap();
+
+    // σ - stake delegated to the pool (including stake pledged by the owners and stake delegated by others)
+    let sigma: BigDecimal= epoch_stake::table
+        .filter(epoch_stake::pool_id.eq(pool_id))
+        .filter(epoch_stake::epoch_no.eq(current_epoch))
         .select(epoch_stake::amount)
         .load::<BigDecimal>(&mut dbs.connect()?)
         .ok()
@@ -1384,7 +1384,7 @@ pub async fn retrieve_rewards_next_epoch(
         .sum();
 
     // σ’ = min(σ, z0) - as σ, but capped at z0
-    let sigma_ = if sigma < z0 {sigma} else {z0.clone()}; 
+    let sigma_ = if sigma < z0 {sigma.clone()} else {z0.clone()}; 
 
     // s - stake pledged by the owners
     let s = BigDecimal::from_f64(0.5).unwrap(); 
@@ -1392,6 +1392,23 @@ pub async fn retrieve_rewards_next_epoch(
     // s’ = min(s, z0) - as s, but capped at z0
     let s_ = if s < z0 {s} else {z0.clone()}; 
 
+    Ok((
+        R, one, a0, sigma_, s_, z0
+    ))
+}
+
+// projected rewards for the given pool
+// source: https://docs.cardano.org/learn/pledging-rewards/
+pub async fn retrieve_rewards_next_epoch(
+    R: BigDecimal,
+    one: BigDecimal,
+    a0: BigDecimal,
+    sigma_: BigDecimal,
+    s_: BigDecimal,
+    z0: BigDecimal,
+) -> Result<BigDecimal, DataProviderDBSyncError> {
+    // type projection_parameters = (R, one, a0, sigma_, s_, z0), 
+    // 
     // reward formula: https://docs.cardano.org/learn/pledging-rewards/
     let rewards = ( R / ( one + a0.clone() ) )*(
         sigma_.clone()
@@ -1635,6 +1652,8 @@ pub async fn epoch_change(
 #[cfg(test)]
 mod tests {
     use crate::provider::CardanoDataProvider;
+    use bigdecimal::BigDecimal;
+    use core::str::FromStr;
 
     #[tokio::test]
     async fn test_tx_history() {
@@ -1711,5 +1730,38 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(t, Some(bigdecimal::BigDecimal::from(500000000u64)));
+    }
+
+    #[tokio::test]
+    async fn reward_projection() {
+        // FUNCTION OUTPUT
+
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let parameters = super::reward_projection_parameters(
+            dp.provider(),
+            200, // current_epoch
+            "pool18xr0tmqrqffd7yu5jh4pq7hs4eezkremxmgzkq8ua4y82dmmrxp".to_string(), // pool_address
+        ).await.unwrap();
+        let projected_reward = super::retrieve_rewards_next_epoch(
+            parameters.0, // R
+            parameters.1, // one
+            parameters.2, // a0
+            parameters.3, // sigma
+            parameters.4, // s_
+            parameters.5, // z0
+        ).await.unwrap();
+
+        // REAL HISTORICAL DATA
+        // Stake address: stake_test1uzcy9jrgx3tp3e8msay2c47kdvvcfxyy4z3e2djh6s8s7nse3gcen
+        // reward id: 270542
+        // pool_id: 55
+        // addr_id: 42031
+        // current_epoch
+
+        let actual_reward = BigDecimal::from_str("746030584727098312929.0384615384615384615384615384615384615384615384615384615384615384615384615384614984376924461464969797950769230769230769230769230769230769230769230769230769230769230769230769230769230769230664").unwrap();
+
+        assert_eq!(projected_reward, actual_reward)
     }
 }

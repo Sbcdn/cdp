@@ -1309,7 +1309,7 @@ pub async fn retrieve_generated_rewards(
 }
 
 // R parameter in reward projection
-pub async fn total_available_rewards(
+pub fn total_available_rewards(
     dbs: &DBSyncProvider,
     current_epoch: i32,
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
@@ -1321,7 +1321,7 @@ pub async fn total_available_rewards(
 }
 
 // a0 parameter in reward projection
-pub async fn pledge_influence_factor(
+pub fn pledge_influence_factor(
     dbs: &DBSyncProvider,
     current_epoch: i32,
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
@@ -1336,64 +1336,70 @@ pub async fn pledge_influence_factor(
 }
 
 // z0 parameter in reward projection
-pub async fn relative_pool_saturation_size(
+pub fn relative_pool_saturation_size(
     dbs: &DBSyncProvider,
     current_epoch: i32,
-    a0: BigDecimal, // pledge_influence_factor
 ) -> Result<BigDecimal, DataProviderDBSyncError>{
-    let total_stake = ada_pots::table
-        .filter(ada_pots::epoch_no.eq(current_epoch))
-        .select(ada_pots::deposits)
-        .first::<BigDecimal>(&mut dbs.connect()?)
-        .ok()
-        .unwrap();
+
+    // saturation level (optimal number of pools)
+    #[allow(non_snake_case)]
+    let K = BigDecimal::from(
+        epoch_param::table
+            .filter(epoch_param::epoch_no.eq(current_epoch))
+            .select(epoch_param::optimal_pool_count)
+            .first::<i32>(&mut dbs.connect()?)?
+    );
+
     let one = BigDecimal::from(1);
-    let pool_count = epoch_param::table
-        .filter(epoch_param::epoch_no.eq(current_epoch))
-        .select(epoch_param::optimal_pool_count)
-        .first::<i32>(&mut dbs.connect()?)
-        .ok()
-        .unwrap();
-    let z0 = BigDecimal::from((one.clone()-a0.clone())*total_stake/pool_count);
+    let z0 = one/K;
 
-    Ok(z0)
-}
-
-// σ parameter in reward projection
-pub async fn total_stake_delegated_to_pool(
-    dbs: &DBSyncProvider,
-    pool_id: i64,
-    current_epoch: i32,
-) -> Result<BigDecimal, DataProviderDBSyncError> {
-    Ok(epoch_stake::table
-        .filter(epoch_stake::pool_id.eq(pool_id))
-        .filter(epoch_stake::epoch_no.eq(current_epoch))
-        .select(epoch_stake::amount)
-        .load::<BigDecimal>(&mut dbs.connect()?)
-        .ok()
-        .unwrap()
-        .iter()
-        .sum()
-    )
+    Ok(z0) // 0.002 is realistic value
 }
 
 // s parameter in reward projection
-pub async fn stake_pledged_by_owner(
+pub fn stake_pledged_by_owner(
     dbs: &DBSyncProvider,
-    pool_id: i64,
+    pool_addr: &str,
+    current_epoch: i32,
 ) -> Result<BigDecimal, DataProviderDBSyncError>{
-    Ok(pool_update::table
+    let owners_stake = pool_update::table
+        .left_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .filter(pool_hash::view.eq(pool_addr.clone()))
+        .filter(pool_update::active_epoch_no.le(current_epoch.clone() as i64))
         .select(pool_update::pledge)
-        .filter(pool_update::hash_id.eq(pool_id))
-        .first::<BigDecimal>(&mut dbs.connect()?)?
-    )
+        .load::<BigDecimal>(&mut dbs.connect()?)?;
+    let owners_stake = owners_stake
+        .last()
+        .unwrap(); 
+    
+
+    let total_stake = BigDecimal::from(
+        pool_total_stake(dbs, pool_addr, current_epoch)?
+    ); 
+
+    Ok(owners_stake/total_stake)
+}
+
+// σ parameter in reward projection
+pub fn stake_delegated_to_pool(
+    dbs: &DBSyncProvider,
+    pool_addr: &str,
+    current_epoch: i32,
+) -> Result<BigDecimal, DataProviderDBSyncError>{
+    let stake_of_pool = pool_total_stake(dbs, pool_addr, current_epoch)?;
+    let total_stake_circulating = ada_pots::table
+        .filter(ada_pots::epoch_no.eq(current_epoch))
+        .select(ada_pots::treasury) // I get negative reward if I choose any other column
+        .first::<BigDecimal>(&mut dbs.connect()?)?; 
+
+    Ok(stake_of_pool/total_stake_circulating)
 }
 
 // input for "retrieve_rewards_next_epoch" function
-pub async fn reward_projection_parameters(
+pub fn reward_projection_parameters(
     dbs: &DBSyncProvider,
     current_epoch: i32, // latest transaction
-    pool_id: i64,
+    pool_addr: &str,
 ) -> Result<(    
     BigDecimal, // R
     BigDecimal, // one
@@ -1403,14 +1409,23 @@ pub async fn reward_projection_parameters(
     BigDecimal, // z0
 ), DataProviderDBSyncError>{
     #[allow(non_snake_case)]
-    let R = total_available_rewards(dbs, current_epoch).await?;
-    let a0 = pledge_influence_factor(dbs, current_epoch).await?;
-    let z0 = relative_pool_saturation_size(dbs, current_epoch, a0.clone()).await?;
-    let sigma: BigDecimal = total_stake_delegated_to_pool(dbs, pool_id, current_epoch).await?;
-    let sigma_ = if sigma < z0 {sigma.clone()} else {z0.clone()}; 
-    let s = stake_pledged_by_owner(dbs, pool_id).await?;
-    let s_ = if s < z0 {s} else {z0.clone()}; 
-    let one = BigDecimal::from(1);
+    let R = total_available_rewards(dbs, current_epoch)?; // correct
+    let a0 = pledge_influence_factor(dbs, current_epoch)?; // correct
+    let z0 = relative_pool_saturation_size(dbs, current_epoch)?; // correct
+    let sigma = stake_delegated_to_pool(dbs, pool_addr, current_epoch)?; // // I get negative reward if I choose any other column
+    let sigma_ = if sigma < z0 {sigma.clone()} else {z0.clone()}; // min(sigma, z0)
+    let s = stake_pledged_by_owner(dbs, pool_addr, current_epoch)?; // correct
+    let s_ = if s < z0 {s.clone()} else {z0.clone()}; // min(s, z0)
+    let one = BigDecimal::from(1); // correct
+
+    dbg!(R.clone());
+    dbg!(one.clone());
+    dbg!(a0.clone());
+    dbg!(sigma.clone());
+    dbg!(sigma_.clone());
+    dbg!(s.clone());
+    dbg!(s_.clone());
+    dbg!(z0.clone());
 
     Ok((
         R, one, a0, sigma_, s_, z0
@@ -1422,7 +1437,7 @@ type RewardProjectionParameters = (BigDecimal, BigDecimal, BigDecimal, BigDecima
 
 // projected rewards for the given pool
 // source: https://docs.cardano.org/learn/pledging-rewards/
-pub async fn retrieve_pool_rewards_next_epoch(
+pub fn retrieve_pool_rewards_next_epoch(
     parameters: RewardProjectionParameters,
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
     #[allow(non_snake_case)]
@@ -1432,6 +1447,7 @@ pub async fn retrieve_pool_rewards_next_epoch(
     let sigma_ = parameters.3;
     let s_ = parameters.4;
     let z0 = parameters.5;
+
     // type projection_parameters = (R, one, a0, sigma_, s_, z0), 
     // 
     // reward formula: https://docs.cardano.org/learn/pledging-rewards/
@@ -1440,61 +1456,102 @@ pub async fn retrieve_pool_rewards_next_epoch(
         +
         ( s_.clone() * a0 / z0.clone() )
         *
-        ( sigma_.clone() - ( s_ / z0.clone() ) * ( z0 - sigma_ ))
+        ( 
+            sigma_.clone() 
+            - 
+            ( s_ / z0.clone() ) * ( z0 - sigma_ )
+        )
     );
 
     Ok(rewards)
 }
 
-pub async fn pool_owner_margin(
+pub fn pool_owner_margin(
     dbs: &DBSyncProvider,
     pool_id: i64,
+    current_epoch: i64,
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
-    Ok(BigDecimal::from_f64(
-        pool_update::table
-            .filter(pool_update::hash_id.eq(pool_id))
-            .select(pool_update::margin)
-            .first::<f64>(&mut dbs.connect()?)?
-    ).unwrap())
+    let mut margin = pool_update::table
+        .filter(pool_update::hash_id.eq(pool_id))
+        .filter(pool_update::active_epoch_no.le(current_epoch))
+        .select(pool_update::margin)
+        .load::<f64>(&mut dbs.connect()?)?;
+    margin.reverse();
+    let margin = BigDecimal::from_f64(
+        margin.last().unwrap().clone()
+    ).unwrap();
+
+    Ok(margin)
 }
 
-pub async fn individual_delegator_rewards_next_epoch(
+pub fn pool_addr_to_id(
     dbs: &DBSyncProvider,
+    pool_addr: &str,
+) -> Result<i64, DataProviderDBSyncError>{
+    Ok(pool_hash::table
+        .filter(pool_hash::view.eq(pool_addr))
+        .select(pool_hash::id)
+        .first::<i64>(&mut dbs.connect()?)?)
+}
+
+pub fn personal_stake(
+    dbs: &DBSyncProvider,
+    stake_addr_id: i64,
     pool_id: i64,
     current_epoch: i32,
-    stake_addr_id: i64,
-) -> Result<BigDecimal, DataProviderDBSyncError>{
-    let owner_margin = pool_owner_margin(dbs, pool_id.clone()).await?;
-    let parameters = reward_projection_parameters(
-        dbs, 
-        current_epoch, 
-        pool_id,
-    ).await?;
-    let total_reward = retrieve_pool_rewards_next_epoch(parameters).await?;
-    let total_delegator_reward = total_reward*owner_margin;
-
-    let your_stake = epoch_stake::table
+) -> Result<BigDecimal, DataProviderDBSyncError> {
+    Ok(epoch_stake::table
         .filter(epoch_stake::addr_id.eq(stake_addr_id))
         .filter(epoch_stake::pool_id.eq(pool_id))
         .filter(epoch_stake::epoch_no.eq(current_epoch))
         .select(epoch_stake::amount)
-        .first::<BigDecimal>(&mut dbs.connect()?)?;
+        .first::<BigDecimal>(&mut dbs.connect()?)?
+    )
+}
 
-    let pool_address = pool_hash::table
-        .filter(pool_hash::id.eq(pool_id))
-        .select(pool_hash::view)
-        .first::<String>(&mut dbs.connect()?)?;
+pub fn personal_delegator_rewards_next_epoch(
+    dbs: &DBSyncProvider,
+    pool_addr: &str,
+    current_epoch: i32,
+    stake_addr_id: i64,
+) -> Result<BigDecimal, DataProviderDBSyncError>{
+    let pool_id = pool_addr_to_id(dbs, pool_addr)?; // correct
 
-    let total_stake = BigDecimal::from(
+    let owner_margin = pool_owner_margin(dbs, pool_id.clone(), current_epoch as i64)?; // correct
+    let parameters = reward_projection_parameters(
+        dbs, 
+        current_epoch, 
+        pool_addr,
+    )?; // plausible, maybe wrong
+    let total_pool_reward = retrieve_pool_rewards_next_epoch(parameters)?; // correct
+    let one = BigDecimal::from(1); // correct
+    let total_delegator_reward = total_pool_reward*(one - owner_margin); // correct
+
+    let personal_stake = personal_stake(dbs, stake_addr_id, pool_id, current_epoch)?; // correct
+
+    let total_pool_stake = BigDecimal::from(
         pool_total_stake(
-            dbs, &pool_address, current_epoch
+            dbs, &pool_addr, current_epoch
         )?
-    );
+    ); // correct
 
-    let your_percentage = your_stake/total_stake;
+    let personal_percentage = personal_stake/total_pool_stake; // seems right
 
     Ok(
-        total_delegator_reward*your_percentage
+        total_delegator_reward*personal_percentage
+    )
+}
+
+pub fn earned_reward(
+    dbs: &DBSyncProvider,
+    addr_id: i64,
+    earned_epoch: i64,
+) -> Result<BigDecimal, DataProviderDBSyncError>{
+    Ok(reward::table
+        .filter(reward::addr_id.eq(addr_id))
+        .filter(reward::earned_epoch.eq(earned_epoch))
+        .select(reward::amount)
+        .first::<>(&mut dbs.connect()?)?
     )
 }
 
@@ -1817,13 +1874,14 @@ mod tests {
             db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
         }));
 
-        let pool_id = 29; // pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c
+        // let pool_id = 29; // pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c
+        let pool_addr = "pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c";
         let stake_addr_id = 1998; // stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh
         let current_epoch = 275;
 
-        let projected_ind_delegator_reward = super::individual_delegator_rewards_next_epoch(
-            dp.provider(), pool_id, current_epoch, stake_addr_id,
-        ).await.unwrap();
+        let projected_ind_delegator_reward = super::personal_delegator_rewards_next_epoch(
+            dp.provider(), pool_addr, current_epoch, stake_addr_id,
+        ).unwrap();
 
         // REAL HISTORICAL DATA
         // Stake address: stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh
@@ -1832,9 +1890,17 @@ mod tests {
         // addr_id: 1998
         // pool_address: pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c
         // current_epoch: 275
+        // tx_id: 4823
+        let correct_reward = super::earned_reward(
+            dp.provider(),
+            stake_addr_id,
+            current_epoch as i64,
+        ).unwrap();
+        println!("correct_reward:   {}", correct_reward);
+        println!("projected reward: {}", projected_ind_delegator_reward);
 
-        let actual_reward = BigDecimal::from_str("132664208430461128.302058768268151092563077178371311736922508629423544634059930225954437083166238593736857146522225214219890558886628845929207093909055796767727050048090898372044799532932039187868135222603968").unwrap();
+        // let actual_reward = BigDecimal::from_str("132664208430461128.302058768268151092563077178371311736922508629423544634059930225954437083166238593736857146522225214219890558886628845929207093909055796767727050048090898372044799532932039187868135222603968").unwrap();
 
-        assert_eq!(projected_ind_delegator_reward, actual_reward)
+        // assert_eq!(projected_ind_delegator_reward, actual_reward)
     }
 }

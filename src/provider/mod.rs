@@ -126,12 +126,12 @@ pub trait CardanoDataProvider {
         &self,
         epoch: i32,
         stake_addr: &str,
-    ) -> Result<Option<BigDecimal>, DataProviderError>;
+    ) -> Result<BigDecimal, DataProviderError>;
 
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<RewardView>>, DataProviderError>;
+    ) -> Result<Vec<RewardView>, DataProviderError>;
 
 }
 
@@ -328,14 +328,14 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         &self,
         epoch: i32,
         stake_addr: &str,
-    ) -> Result<Option<BigDecimal>, DataProviderError> {
+    ) -> Result<BigDecimal, DataProviderError> {
         dbg!(self.provider().retrieve_staked_amount(epoch, stake_addr).await)
     }
 
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<RewardView>>, DataProviderError> {
+    ) -> Result<Vec<RewardView>, DataProviderError> {
         dbg!(self.provider().retrieve_generated_rewards(stake_addr).await)
     }
 }

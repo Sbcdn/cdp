@@ -245,13 +245,13 @@ pub fn retrieve_staked_amount (
     bfp: &BlockfrostProvider,
     epoch: i32,
     stake_addr: &str,
-) -> Result<Option<BigDecimal>, crate::provider::error::DataProviderError> {
-    Ok(None)
+) -> Result<BigDecimal, crate::provider::error::DataProviderError> {
+    Ok(BigDecimal::from(0))
 }
 
 pub fn retrieve_generated_rewards (
     bfp: &BlockfrostProvider,
     stake_addr: &str,
-) -> Result<Option<Vec<RewardView>>, crate::provider::error::DataProviderError> {
-    Ok(None)
+) -> Result<Vec<RewardView>, crate::provider::error::DataProviderError> {
+    Ok(vec![])
 }

@@ -241,14 +241,14 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         epoch: i32,
         stake_addr: &str,
-    ) -> Result<Option<BigDecimal>, crate::provider::error::DataProviderError> {
+    ) -> Result<BigDecimal, crate::provider::error::DataProviderError> {
         Ok(api::retrieve_staked_amount(self, epoch, stake_addr)?)
     }
 
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<RewardView>>, crate::provider::error::DataProviderError> {
+    ) -> Result<Vec<RewardView>, crate::provider::error::DataProviderError> {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 }

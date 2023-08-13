@@ -1286,7 +1286,7 @@ pub fn retrieve_staked_amount(
     dbs: &DBSyncProvider,
     epoch: i32,
     stake_addr: &str,
-) -> Result<Option<BigDecimal>, DataProviderDBSyncError> {
+) -> Result<BigDecimal, DataProviderDBSyncError> {
     Ok(epoch_stake::table
         .inner_join(stake_address::table.on(epoch_stake::addr_id.eq(stake_address::id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
@@ -1294,14 +1294,15 @@ pub fn retrieve_staked_amount(
         .select(epoch_stake::amount)
         .first::<BigDecimal>(&mut dbs.connect()?)
         .ok()
+        .unwrap()
     )
 }
 
 pub fn retrieve_generated_rewards(
     dbs: &DBSyncProvider,
     stake_addr: &str,
-) -> Result<Option<Vec<RewardView>>, DataProviderDBSyncError> {
-    Ok(Some(reward::table
+) -> Result<Vec<RewardView>, DataProviderDBSyncError> {
+    Ok(reward::table
         .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
         .select((reward::amount, reward::earned_epoch, reward::spendable_epoch))
@@ -1316,7 +1317,7 @@ pub fn retrieve_generated_rewards(
                 spendable_epoch: t.2,
             }
         }).collect::<Vec<RewardView>>()
-    ))
+    )
 }
 
 // R parameter in reward projection
@@ -1351,10 +1352,8 @@ pub fn relative_pool_saturation_size(
     dbs: &DBSyncProvider,
     current_epoch: i32,
 ) -> Result<BigDecimal, DataProviderDBSyncError>{
-
     // saturation level (optimal number of pools)
-    #[allow(non_snake_case)]
-    let K = BigDecimal::from(
+    let k = BigDecimal::from(
         epoch_param::table
             .filter(epoch_param::epoch_no.eq(current_epoch))
             .select(epoch_param::optimal_pool_count)
@@ -1362,7 +1361,7 @@ pub fn relative_pool_saturation_size(
     );
 
     let one = BigDecimal::from(1);
-    let z0 = one/K;
+    let z0 = one/k;
 
     Ok(z0)
 }
@@ -1412,8 +1411,7 @@ pub fn reward_projection_parameters(
     current_epoch: i32, // latest transaction
     pool_addr: &str,
 ) -> Result<RewardProjectionParameters, DataProviderDBSyncError>{
-    #[allow(non_snake_case)]
-    let R = total_available_rewards(dbs, current_epoch)?; // correct
+    let r = total_available_rewards(dbs, current_epoch)?; // correct
     let a0 = pledge_influence_factor(dbs, current_epoch)?; // correct
     let z0 = relative_pool_saturation_size(dbs, current_epoch)?; // correct
     let sigma = stake_delegated_to_pool(dbs, pool_addr, current_epoch)?;
@@ -1424,7 +1422,7 @@ pub fn reward_projection_parameters(
 
     let one = BigDecimal::from(1); // correct
 
-    dbg!(R.clone());
+    dbg!(r.clone());
     dbg!(one.clone());
     dbg!(a0.clone());
     dbg!(sigma.clone());
@@ -1434,15 +1432,14 @@ pub fn reward_projection_parameters(
     dbg!(z0.clone());
 
     Ok(RewardProjectionParameters{
-        R, one, a0, sigma_, s_, z0
+        r, one, a0, sigma_, s_, z0
     })
 }
 
 // // (R, one, a0, sigma_, s_, z0)
 // type RewardProjectionParameters = (BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal);
-#[allow(non_snake_case)]
 pub struct RewardProjectionParameters {
-    R: BigDecimal,
+    r: BigDecimal,
     one: BigDecimal,
     a0: BigDecimal,
     sigma_: BigDecimal,
@@ -1504,8 +1501,15 @@ pub fn personal_stake(
             .first::<BigDecimal>(&mut dbs.connect()?)?
         )
     } else {
-        // TODO: current epoch
-        Err(DataProviderDBSyncError::Custom("Not implemented".to_string()))
+        Ok(*epoch_stake::table
+            .inner_join(stake_address::table.on(stake_address::id.eq(epoch_stake::addr_id)))
+            .filter(stake_address::view.eq(stake_addr))
+            .select(epoch_stake::amount)
+            .load::<BigDecimal>(&mut dbs.connect()?)?
+            .iter()
+            .last()
+            .unwrap()
+        )
     }
 }
 
@@ -1902,7 +1906,7 @@ mod tests {
         let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh";
 
         let func_value = super::retrieve_staked_amount(dp.provider(), epoch, stake_addr)
-            .unwrap().unwrap();
+            .unwrap();
         let real_value = BigDecimal::from_str("10305915710")
         .unwrap();
 

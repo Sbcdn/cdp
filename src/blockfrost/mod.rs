@@ -256,14 +256,14 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         &self,
         epoch: i32,
         stake_addr: &str,
-    ) -> Result<Option<BigDecimal>, DataProviderError> {
+    ) -> Result<BigDecimal, DataProviderError> {
         Ok(api::retrieve_staked_amount(self, epoch, stake_addr)?)
     }
 
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<RewardView>>, DataProviderError> {
+    ) -> Result<Vec<RewardView>, DataProviderError> {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 }

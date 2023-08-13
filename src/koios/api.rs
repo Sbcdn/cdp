@@ -190,13 +190,13 @@ pub fn retrieve_staked_amount (
     bfp: &KoiosProvider,
     epoch: i32,
     stake_addr: &str,
-) -> Result<Option<BigDecimal>, DataProviderKoiosError> {
-    Ok(None)
+) -> Result<BigDecimal, DataProviderKoiosError> {
+    Ok(BigDecimal::from(0))
 }
 
 pub fn retrieve_generated_rewards (
     bfp: &KoiosProvider,
     stake_addr: &str,
-) -> Result<Option<Vec<RewardView>>, DataProviderKoiosError> {
-    Ok(None)
+) -> Result<Vec<RewardView>, DataProviderKoiosError> {
+    Ok(vec![])
 }

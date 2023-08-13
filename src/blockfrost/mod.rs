@@ -1,7 +1,8 @@
-use crate::models::{CDPDatum, RewardView};
 use crate::provider::error::DataProviderError;
+use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView, 
+    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView
+};
 
-use self::error::DataProviderBlockfrostError;
 use async_trait::async_trait;
 use blockfrost::{load, BlockFrostApi};
 use bigdecimal::BigDecimal;
@@ -76,7 +77,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     async fn mint_metadata(
         &self,
         fingerprint_in: &str,
-    ) -> Result<crate::models::TokenInfoView, DataProviderError> {
+    ) -> Result<TokenInfoView, DataProviderError> {
         Ok(api::mint_metadata(self, fingerprint_in)?)
     }
 
@@ -114,7 +115,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         &self,
         tx_id: i64,
         tx_index: i16,
-    ) -> Result<Vec<crate::models::CardanoNativeAssetView>, DataProviderError>
+    ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>
     {
         Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
     }
@@ -134,7 +135,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         &self,
         pool: &str,
         epoch: i32,
-    ) -> Result<Vec<crate::models::StakeDelegationView>, DataProviderError>
+    ) -> Result<Vec<StakeDelegationView>, DataProviderError>
     {
         Ok(api::pool_delegations(self, pool, epoch)?)
     }
@@ -144,7 +145,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         pool: &str,
         start_epoch: i64,
         end_epoch: i64,
-    ) -> Result<Vec<crate::models::DelegationView>, DataProviderError> {
+    ) -> Result<Vec<DelegationView>, DataProviderError> {
         Ok(api::deligations_per_pool_for_epochs(
             self,
             pool,
@@ -176,14 +177,14 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     async fn token_info(
         &self,
         fingerprint_in: &str,
-    ) -> Result<crate::models::TokenInfoView, DataProviderError> {
+    ) -> Result<TokenInfoView, DataProviderError> {
         Ok(api::token_info(self, fingerprint_in)?)
     }
 
     async fn stake_registration(
         &self,
         stake_addr_in: &str,
-    ) -> Result<Vec<crate::models::StakeRegistrationView>, DataProviderError>
+    ) -> Result<Vec<StakeRegistrationView>, DataProviderError>
     {
         Ok(api::stake_registration(self, stake_addr_in)?)
     }
@@ -192,7 +193,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         &self,
         stake_addr_in: &str,
     ) -> Result<
-        Vec<crate::models::StakeDeregistrationView>,
+        Vec<StakeDeregistrationView>,
         DataProviderError,
     > {
         Ok(api::stake_deregistration(self, stake_addr_in)?)
@@ -209,7 +210,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         &self,
         fingerprint_in: &str,
         min_amount: Option<&i64>,
-    ) -> Result<Vec<crate::models::HoldingWalletView>, DataProviderError>
+    ) -> Result<Vec<HoldingWalletView>, DataProviderError>
     {
         Ok(api::lookup_token_holders(self, fingerprint_in, min_amount)?)
     }
@@ -217,7 +218,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     async fn lookup_nft_token_holders(
         &self,
         policy: &str,
-    ) -> Result<Vec<crate::models::HoldingWalletView>, DataProviderError>
+    ) -> Result<Vec<HoldingWalletView>, DataProviderError>
     {
         Ok(api::lookup_nft_token_holders(self, policy)?)
     }
@@ -247,7 +248,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         &self,
         addresses: &Vec<&str>,
         slot: Option<u64>,
-    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError>
+    ) -> Result<Vec<TxHistoryListView>, DataProviderError>
     {
         Ok(Vec::new())
     }

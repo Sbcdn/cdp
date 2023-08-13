@@ -6,7 +6,7 @@ use std::fmt;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 
-use crate::models::AssetHandle;
+use crate::models::{AssetHandle, TokenInfoView};
 
 #[derive(Serialize, Debug)]
 pub(crate) struct ErrorResponse {
@@ -91,7 +91,7 @@ pub struct WSResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WSResponseTypes {
-    VTokenInfoView(Vec<crate::models::TokenInfoView>),
+    VTokenInfoView(Vec<TokenInfoView>),
     VAssetHandle(Vec<AssetHandle>),
     VBool(Vec<bool>),
     String(String),

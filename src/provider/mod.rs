@@ -1,6 +1,7 @@
 pub mod config;
 pub mod error;
-use crate::models::CDPDatum;
+use crate::models::{CDPDatum, TxHistoryListView
+};
 
 use super::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
@@ -120,7 +121,7 @@ pub trait CardanoDataProvider {
         &self,
         addresses: &Vec<&str>,
         slot: Option<u64>,
-    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError>;
+    ) -> Result<Vec<TxHistoryListView>, DataProviderError>;
 
     async fn retrieve_staked_amount (
         &self,
@@ -320,7 +321,7 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         &self,
         addresses: &Vec<&str>,
         slot: Option<u64>,
-    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError> {
+    ) -> Result<Vec<TxHistoryListView>, DataProviderError> {
         self.provider().tx_history(addresses, slot).await
     }
 

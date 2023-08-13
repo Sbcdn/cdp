@@ -4,6 +4,7 @@ use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
+use crate::provider::error::DataProviderError;
 
 use bigdecimal::BigDecimal;
 
@@ -68,7 +69,7 @@ pub fn asset_utxos_on_addr(
 pub fn find_datums_for_tx(
     bfp: &CarbProvider,
     txid: &Vec<u8>,
-) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+) -> Result<Vec<CDPDatum>, DataProviderError> {
     todo!();
 }
 
@@ -187,13 +188,13 @@ pub fn retrieve_staked_amount (
     bfp: &CarbProvider,
     epoch: i32,
     stake_addr: &str,
-) -> Result<BigDecimal, crate::provider::error::DataProviderError> {
+) -> Result<BigDecimal, DataProviderError> {
     Ok(BigDecimal::from(0))
 }
 
 pub fn retrieve_generated_rewards (
     bfp: &CarbProvider,
     stake_addr: &str,
-) -> Result<Vec<RewardView>, crate::provider::error::DataProviderError> {
+) -> Result<Vec<RewardView>, DataProviderError> {
     Ok(vec![])
 }

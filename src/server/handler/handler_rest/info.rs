@@ -1,6 +1,6 @@
 use std::str::from_utf8;
 
-use crate::models::AssetHandle;
+use crate::models::{AssetHandle, PoolView};
 use crate::server::error::RESTError;
 use crate::server::filter::with_auth;
 use crate::server::handler::make_error;
@@ -407,7 +407,7 @@ pub async fn retrieve_active_pools(
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
     let pools = crate::dbsync::get_pools(dp.provider()).await.unwrap();
-    let pools_paged: Vec<Vec<crate::models::PoolView>> =
+    let pools_paged: Vec<Vec<PoolView>> =
         pools.chunks(100).map(|s| s.into()).collect();
     if pools_paged.len() < page {
         return make_error(

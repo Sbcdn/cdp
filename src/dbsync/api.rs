@@ -4,7 +4,9 @@ use super::schema::*;
 use crate::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, ScriptView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView, TxHistoryListQuery,
-    TxHistoryListView, UTxOView, WithdrawalView, RewardView
+    TxHistoryListView, UTxOView, WithdrawalView, RewardView, CDPDatum, PoolView, TxHistoryListQueryLight,
+    TransactionView
+    
 };
 use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
@@ -299,7 +301,7 @@ pub fn asset_utxos_on_addr_dep(
 pub fn find_datums_for_tx(
     dbs: &DBSyncProvider,
     txid: &Vec<u8>,
-) -> Result<Vec<crate::models::CDPDatum>, DataProviderDBSyncError> {
+) -> Result<Vec<CDPDatum>, DataProviderDBSyncError> {
     let mut datums = datum::table
         .inner_join(
             tx_out::table.on(tx_out::data_hash
@@ -315,7 +317,7 @@ pub fn find_datums_for_tx(
             tx_out::address,
             tx_out::address_has_script,
         ))
-        .load::<crate::models::CDPDatum>(&mut dbs.connect()?);
+        .load::<CDPDatum>(&mut dbs.connect()?);
 
     if let Ok(o) = datums {
         if !o.is_empty() {
@@ -360,7 +362,7 @@ pub fn find_datums_for_tx(
             tx_out::address,
             tx_out::address_has_script,
         ))
-        .load::<crate::models::CDPDatum>(&mut dbs.connect()?);
+        .load::<CDPDatum>(&mut dbs.connect()?);
 
     Ok(datums?)
 }
@@ -733,7 +735,7 @@ pub fn mint_metadata(
 
 pub async fn get_pools(
     dbs: &DBSyncProvider,
-) -> Result<Vec<crate::models::PoolView>, DataProviderDBSyncError> {
+) -> Result<Vec<PoolView>, DataProviderDBSyncError> {
     let pools = pool_hash::table
         .left_join(pool_retire::table.on(pool_retire::hash_id.eq(pool_hash::id)))
         .inner_join(pool_offline_data::table.on(pool_offline_data::pool_id.eq(pool_hash::id)))
@@ -743,7 +745,7 @@ pub async fn get_pools(
             pool_offline_data::ticker_name,
             pool_offline_data::json,
         ))
-        .load::<crate::models::PoolView>(&mut dbs.connect()?)
+        .load::<PoolView>(&mut dbs.connect()?)
         .ok();
     log::debug!("get_pools: {:?}", pools);
     if let Some(p) = pools {
@@ -894,7 +896,7 @@ fn _tx_history_q(
     dbs: &DBSyncProvider,
     addresses: &[&str],
     _slot: Option<u64>,
-) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderDBSyncError> {
+) -> Result<Vec<TxHistoryListView>, DataProviderDBSyncError> {
     let mut addresses = addresses.iter().fold("(".to_string(), |mut acc, a| {
         acc.push_str(&("'".to_string() + a + "',"));
         acc
@@ -933,7 +935,7 @@ pub fn tx_history(
     dbs: &DBSyncProvider,
     addresses: &[&str],
     slot: Option<u64>,
-) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderDBSyncError> {
+) -> Result<Vec<TxHistoryListView>, DataProviderDBSyncError> {
     let mut addresses = addresses.iter().fold("(".to_string(), |mut acc, a| {
         acc.push_str(&("'".to_string() + a + "',"));
         acc
@@ -950,13 +952,13 @@ pub fn tx_history(
     group by b.slot_no, t.hash order by slot desc"
     );
     log::trace!("{addresses}");
-    let txhistory: Option<Vec<crate::models::TxHistoryListQueryLight>> =
+    let txhistory: Option<Vec<TxHistoryListQueryLight>> =
         diesel::sql_query(query).load(&mut dbs.connect()?).ok();
     log::debug!("{txhistory:?}");
-    let mut out = Vec::<crate::models::TxHistoryListView>::new();
+    let mut out = Vec::<TxHistoryListView>::new();
     if let Some(history) = txhistory {
         for t in history.into_iter() {
-            out.push(crate::models::TxHistoryListView {
+            out.push(TxHistoryListView {
                 slot: t.slot,
                 hash: hex::encode(t.hash),
                 assets: vec![],
@@ -1453,7 +1455,7 @@ pub fn calculate_pool_rewards_next_epoch(
     p: RewardProjectionParameters
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
     // reward formula: https://docs.cardano.org/learn/pledging-rewards/
-    let rewards = ( p.R / ( p.one + p.a0.clone() ) )*(
+    let rewards = ( p.r / ( p.one + p.a0.clone() ) )*(
         p.sigma_.clone()
         +
         ( p.s_.clone() * p.a0 / p.z0.clone() )
@@ -1501,7 +1503,7 @@ pub fn personal_stake(
             .first::<BigDecimal>(&mut dbs.connect()?)?
         )
     } else {
-        Ok(*epoch_stake::table
+        Ok(epoch_stake::table
             .inner_join(stake_address::table.on(stake_address::id.eq(epoch_stake::addr_id)))
             .filter(stake_address::view.eq(stake_addr))
             .select(epoch_stake::amount)
@@ -1509,6 +1511,7 @@ pub fn personal_stake(
             .iter()
             .last()
             .unwrap()
+            .clone()
         )
     }
 }
@@ -1564,7 +1567,7 @@ pub fn earned_reward(
 pub async fn discover_transaction(
     dbs: &DBSyncProvider,
     hash: &str,
-) -> Result<crate::models::TransactionView, DataProviderDBSyncError> {
+) -> Result<TransactionView, DataProviderDBSyncError> {
     let inputs = get_tx_inputs(dbs, hash).await?;
     log::debug!("Inputs: \n{inputs:?}\n");
     let reference_inputs = get_tx_reference_inputs(dbs, hash).await?;
@@ -1597,7 +1600,7 @@ pub async fn discover_transaction(
         .first::<(BigDecimal, Vec<u8>, Option<i32>, Option<i64>)>(&mut dbs.connect()?)?;
     log::debug!("TxInfo: {txinfo:?}");
 
-    Ok(crate::models::TransactionView {
+    Ok(TransactionView {
         hash: hash.to_string(),
         block: hex::encode(txinfo.1),
         slot: txinfo.3,

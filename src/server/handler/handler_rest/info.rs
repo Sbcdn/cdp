@@ -529,15 +529,6 @@ pub async fn retrieve_generated_rewards (
         .await
         .map_err(|_| RESTError::Custom("Couldn't find generated rewards".to_string()))?;
 
-    // let mut result = vec![];
-    // for t in generated_rewards.unwrap() {
-    //     result.push(json!({
-    //         "amount": t.0,
-    //         "earned_epoch": t.1,
-    //         "spendable_epoch": t.2
-    //     }));
-    // }
-
     Ok(rweb::Json::from(json!(generated_rewards)))
 }
 

@@ -7,6 +7,7 @@ use crate::models::{
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
 use blockfrost::{AccountAddress, AddressUtxo};
+use bigdecimal::BigDecimal;
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
@@ -238,4 +239,19 @@ pub fn txhash_spent(
     let txh_b = hex::decode(txhash)?;
 
     Ok(false)
+}
+
+pub fn retrieve_staked_amount (
+    bfp: &BlockfrostProvider,
+    epoch: i32,
+    stake_addr: &str,
+) -> Result<Option<BigDecimal>, crate::provider::error::DataProviderError> {
+    Ok(None)
+}
+
+pub fn retrieve_generated_rewards (
+    bfp: &BlockfrostProvider,
+    stake_addr: &str,
+) -> Result<Option<Vec<BigDecimal>>, crate::provider::error::DataProviderError> {
+    Ok(None)
 }

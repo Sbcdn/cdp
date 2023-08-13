@@ -3,6 +3,7 @@ use crate::models::CDPDatum;
 use self::error::DataProviderBlockfrostError;
 use async_trait::async_trait;
 use blockfrost::{load, BlockFrostApi};
+use bigdecimal::BigDecimal;
 
 pub mod api;
 pub mod error;
@@ -248,5 +249,20 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     ) -> Result<Vec<crate::models::TxHistoryListView>, crate::provider::error::DataProviderError>
     {
         Ok(Vec::new())
+    }
+
+    async fn retrieve_staked_amount (
+        &self,
+        epoch: i32,
+        stake_addr: &str,
+    ) -> Result<Option<BigDecimal>, crate::provider::error::DataProviderError> {
+        Ok(api::retrieve_staked_amount(self, epoch, stake_addr)?)
+    }
+
+    async fn retrieve_generated_rewards (
+        &self,
+        stake_addr: &str,
+    ) -> Result<Option<Vec<BigDecimal>>, crate::provider::error::DataProviderError> {
+        Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 }

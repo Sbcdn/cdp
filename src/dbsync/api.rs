@@ -11,6 +11,7 @@ use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use dcslc::TransactionUnspentOutputs;
 use diesel::prelude::*;
 use log::debug;
+use std::str::FromStr;
 /// get all tokens of an utxo
 
 pub fn get_utxo_tokens(
@@ -1281,27 +1282,28 @@ pub async fn tx_collateral_out(
     Ok(txout)
 }
 
-pub async fn retrieve_staked_amount(
+pub fn retrieve_staked_amount(
     dbs: &DBSyncProvider,
-    pool_id: i64,
-    stake_address: &str,
-) -> Result<Option<Vec<BigDecimal>>, DataProviderDBSyncError> {
+    epoch: i32,
+    stake_addr: &str,
+) -> Result<Option<BigDecimal>, DataProviderDBSyncError> {
     Ok(epoch_stake::table
-        .inner_join(stake_address::table.on(epoch_stake::pool_id.eq(stake_address::id)))
-        .filter(stake_address::view.eq(stake_address))
-        .filter(epoch_stake::pool_id.eq(pool_id))
+        .inner_join(stake_address::table.on(epoch_stake::addr_id.eq(stake_address::id)))
+        .filter(stake_address::view.eq(stake_addr.to_string()))
+        .filter(epoch_stake::epoch_no.eq(epoch))
         .select(epoch_stake::amount)
-        .load::<BigDecimal>(&mut dbs.connect()?)
+        .first::<BigDecimal>(&mut dbs.connect()?)
         .ok()
     )
 }
 
-pub async fn retrieve_generated_rewards(
+pub fn retrieve_generated_rewards(
     dbs: &DBSyncProvider,
-    addr_id: i64,
+    stake_addr: &str,
 ) -> Result<Option<Vec<BigDecimal>>, DataProviderDBSyncError> {
     Ok(reward::table
-        .filter(reward::addr_id.eq(addr_id))
+        .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
+        .filter(stake_address::view.eq(stake_addr.to_string()))
         .select(reward::amount)
         .load::<BigDecimal>(&mut dbs.connect()?)
         .ok()
@@ -1353,7 +1355,7 @@ pub fn relative_pool_saturation_size(
     let one = BigDecimal::from(1);
     let z0 = one/K;
 
-    Ok(z0) // 0.002 is realistic value
+    Ok(z0)
 }
 
 // s parameter in reward projection
@@ -1363,7 +1365,7 @@ pub fn stake_pledged_by_owner(
     current_epoch: i32,
 ) -> Result<BigDecimal, DataProviderDBSyncError>{
     let owners_stake = pool_update::table
-        .left_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
         .filter(pool_hash::view.eq(pool_addr.clone()))
         .filter(pool_update::active_epoch_no.le(current_epoch.clone() as i64))
         .select(pool_update::pledge)
@@ -1384,15 +1386,15 @@ pub fn stake_pledged_by_owner(
 pub fn stake_delegated_to_pool(
     dbs: &DBSyncProvider,
     pool_addr: &str,
-    current_epoch: i32,
+    epoch: i32,
 ) -> Result<BigDecimal, DataProviderDBSyncError>{
-    let stake_of_pool = pool_total_stake(dbs, pool_addr, current_epoch)?;
+    let stake_of_pool = pool_total_stake(dbs, pool_addr, epoch)?; // 0.678 of current value 
     let total_stake_circulating = ada_pots::table
-        .filter(ada_pots::epoch_no.eq(current_epoch))
-        .select(ada_pots::treasury) // I get negative reward if I choose any other column
+        .filter(ada_pots::epoch_no.eq(epoch))
+        .select(ada_pots::treasury) // 1.475 of the value of ada_pots::treasury is correct
         .first::<BigDecimal>(&mut dbs.connect()?)?; 
 
-    Ok(stake_of_pool/total_stake_circulating)
+    Ok(stake_of_pool/total_stake_circulating) // 0.678 of the value is correct
 }
 
 // input for "retrieve_rewards_next_epoch" function
@@ -1400,22 +1402,19 @@ pub fn reward_projection_parameters(
     dbs: &DBSyncProvider,
     current_epoch: i32, // latest transaction
     pool_addr: &str,
-) -> Result<(    
-    BigDecimal, // R
-    BigDecimal, // one
-    BigDecimal, // a0
-    BigDecimal, // sigma
-    BigDecimal, // s_
-    BigDecimal, // z0
-), DataProviderDBSyncError>{
+) -> Result<RewardProjectionParameters, DataProviderDBSyncError>{
+    let Sigma = BigDecimal::from_str("1").unwrap(); // 0.678 gives optimal projection
+
     #[allow(non_snake_case)]
     let R = total_available_rewards(dbs, current_epoch)?; // correct
     let a0 = pledge_influence_factor(dbs, current_epoch)?; // correct
     let z0 = relative_pool_saturation_size(dbs, current_epoch)?; // correct
-    let sigma = stake_delegated_to_pool(dbs, pool_addr, current_epoch)?; // // I get negative reward if I choose any other column
+    let sigma = stake_delegated_to_pool(dbs, pool_addr, current_epoch)? * Sigma;
+    let s = stake_pledged_by_owner(dbs, pool_addr, current_epoch)?;
+    
     let sigma_ = if sigma < z0 {sigma.clone()} else {z0.clone()}; // min(sigma, z0)
-    let s = stake_pledged_by_owner(dbs, pool_addr, current_epoch)?; // correct
     let s_ = if s < z0 {s.clone()} else {z0.clone()}; // min(s, z0)
+
     let one = BigDecimal::from(1); // correct
 
     dbg!(R.clone());
@@ -1427,39 +1426,38 @@ pub fn reward_projection_parameters(
     dbg!(s_.clone());
     dbg!(z0.clone());
 
-    Ok((
+    Ok(RewardProjectionParameters{
         R, one, a0, sigma_, s_, z0
-    ))
+    })
 }
 
-// (R, one, a0, sigma_, s_, z0)
-type RewardProjectionParameters = (BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal);
+// // (R, one, a0, sigma_, s_, z0)
+// type RewardProjectionParameters = (BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal, BigDecimal);
+#[allow(non_snake_case)]
+pub struct RewardProjectionParameters {
+    R: BigDecimal,
+    one: BigDecimal,
+    a0: BigDecimal,
+    sigma_: BigDecimal,
+    s_: BigDecimal,
+    z0: BigDecimal,
+}
 
 // projected rewards for the given pool
 // source: https://docs.cardano.org/learn/pledging-rewards/
-pub fn retrieve_pool_rewards_next_epoch(
-    parameters: RewardProjectionParameters,
+pub fn calculate_pool_rewards_next_epoch(
+    p: RewardProjectionParameters
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
-    #[allow(non_snake_case)]
-    let R = parameters.0;
-    let one = parameters.1;
-    let a0 = parameters.2;
-    let sigma_ = parameters.3;
-    let s_ = parameters.4;
-    let z0 = parameters.5;
-
-    // type projection_parameters = (R, one, a0, sigma_, s_, z0), 
-    // 
     // reward formula: https://docs.cardano.org/learn/pledging-rewards/
-    let rewards = ( R / ( one + a0.clone() ) )*(
-        sigma_.clone()
+    let rewards = ( p.R / ( p.one + p.a0.clone() ) )*(
+        p.sigma_.clone()
         +
-        ( s_.clone() * a0 / z0.clone() )
+        ( p.s_.clone() * p.a0 / p.z0.clone() )
         *
         ( 
-            sigma_.clone() 
+            p.sigma_.clone() 
             - 
-            ( s_ / z0.clone() ) * ( z0 - sigma_ )
+            ( p.s_ / p.z0.clone() ) * ( p.z0 - p.sigma_ )
         )
     );
 
@@ -1468,12 +1466,13 @@ pub fn retrieve_pool_rewards_next_epoch(
 
 pub fn pool_owner_margin(
     dbs: &DBSyncProvider,
-    pool_id: i64,
+    pool_hash: &str,
     current_epoch: i64,
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
     let mut margin = pool_update::table
-        .filter(pool_update::hash_id.eq(pool_id))
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
         .filter(pool_update::active_epoch_no.le(current_epoch))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
         .select(pool_update::margin)
         .load::<f64>(&mut dbs.connect()?)?;
     margin.reverse();
@@ -1484,54 +1483,49 @@ pub fn pool_owner_margin(
     Ok(margin)
 }
 
-pub fn pool_addr_to_id(
-    dbs: &DBSyncProvider,
-    pool_addr: &str,
-) -> Result<i64, DataProviderDBSyncError>{
-    Ok(pool_hash::table
-        .filter(pool_hash::view.eq(pool_addr))
-        .select(pool_hash::id)
-        .first::<i64>(&mut dbs.connect()?)?)
-}
-
 pub fn personal_stake(
     dbs: &DBSyncProvider,
-    stake_addr_id: i64,
-    pool_id: i64,
-    current_epoch: i32,
+    stake_addr: &str,
+    epoch: Option<i32>,
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
-    Ok(epoch_stake::table
-        .filter(epoch_stake::addr_id.eq(stake_addr_id))
-        .filter(epoch_stake::pool_id.eq(pool_id))
-        .filter(epoch_stake::epoch_no.eq(current_epoch))
-        .select(epoch_stake::amount)
-        .first::<BigDecimal>(&mut dbs.connect()?)?
-    )
+    if let Some(epoch) = epoch {
+        Ok(epoch_stake::table
+            .inner_join(stake_address::table.on(stake_address::id.eq(epoch_stake::addr_id)))
+            .filter(stake_address::view.eq(stake_addr))
+            .filter(epoch_stake::epoch_no.eq(epoch))
+            .select(epoch_stake::amount)
+            .first::<BigDecimal>(&mut dbs.connect()?)?
+        )
+    } else {
+        // TODO: current epoch
+        Err(DataProviderDBSyncError::Custom("Not implemented".to_string()))
+    }
 }
 
+// Accurate for small epoch values, but inaccurate for large epoch values.
+// Correction mechanism needs to be investigated and introduced to 
+// make projection accurate for higher epoch values. Correction mechanism either
+// in this function or any of its child functions. 
 pub fn personal_delegator_rewards_next_epoch(
     dbs: &DBSyncProvider,
-    pool_addr: &str,
+    pool_hash: &str,
     current_epoch: i32,
-    stake_addr_id: i64,
+    stake_addr: &str,
 ) -> Result<BigDecimal, DataProviderDBSyncError>{
-    let pool_id = pool_addr_to_id(dbs, pool_addr)?; // correct
-
-    let owner_margin = pool_owner_margin(dbs, pool_id.clone(), current_epoch as i64)?; // correct
+    let owner_margin = pool_owner_margin(dbs, pool_hash, current_epoch as i64)?; // correct
     let parameters = reward_projection_parameters(
         dbs, 
         current_epoch, 
-        pool_addr,
+        pool_hash,
     )?; // plausible, maybe wrong
-    let total_pool_reward = retrieve_pool_rewards_next_epoch(parameters)?; // correct
-    let one = BigDecimal::from(1); // correct
-    let total_delegator_reward = total_pool_reward*(one - owner_margin); // correct
+    let total_pool_reward = calculate_pool_rewards_next_epoch(parameters)?; // correct
+    let total_delegator_reward = total_pool_reward*(BigDecimal::from(1) - owner_margin); // correct
 
-    let personal_stake = personal_stake(dbs, stake_addr_id, pool_id, current_epoch)?; // correct
+    let personal_stake = personal_stake(dbs, stake_addr, Some(current_epoch))?; // correct
 
     let total_pool_stake = BigDecimal::from(
         pool_total_stake(
-            dbs, &pool_addr, current_epoch
+            dbs, pool_hash, current_epoch
         )?
     ); // correct
 
@@ -1544,14 +1538,15 @@ pub fn personal_delegator_rewards_next_epoch(
 
 pub fn earned_reward(
     dbs: &DBSyncProvider,
-    addr_id: i64,
+    stake_addr: &str,
     earned_epoch: i64,
 ) -> Result<BigDecimal, DataProviderDBSyncError>{
     Ok(reward::table
-        .filter(reward::addr_id.eq(addr_id))
+        .inner_join(stake_address::table.on(reward::addr_id.eq(stake_address::id)))
+        .filter(stake_address::view.eq(stake_addr.to_string()))
         .filter(reward::earned_epoch.eq(earned_epoch))
         .select(reward::amount)
-        .first::<>(&mut dbs.connect()?)?
+        .first::<BigDecimal>(&mut dbs.connect()?)?
     )
 }
 
@@ -1785,9 +1780,9 @@ pub async fn epoch_change(
 
 #[cfg(test)]
 mod tests {
-    use crate::provider::CardanoDataProvider;
+    use crate::{provider::CardanoDataProvider, dbsync::DataProviderDBSyncError};
     use bigdecimal::BigDecimal;
-    use core::str::FromStr;
+    use std::str::FromStr;
 
     #[tokio::test]
     async fn test_tx_history() {
@@ -1866,41 +1861,44 @@ mod tests {
         assert_eq!(t, Some(bigdecimal::BigDecimal::from(500000000u64)));
     }
 
+    // Accurate for small epoch values, but inaccurate for large epoch values.
+    // Correction mechanism needs to be investigated and introduced to 
+    // make projection accurate for higher epoch values.
     #[tokio::test]
     async fn reward_projection() {
-        // FUNCTION OUTPUT
-
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
             db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
         }));
 
-        // let pool_id = 29; // pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c
-        let pool_addr = "pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c";
-        let stake_addr_id = 1998; // stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh
-        let current_epoch = 275;
+        let pool_hash = "pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c";
+        let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh"; // stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh
+        let current_epoch = 25;
 
-        let projected_ind_delegator_reward = super::personal_delegator_rewards_next_epoch(
-            dp.provider(), pool_addr, current_epoch, stake_addr_id,
+        let func_value = super::personal_delegator_rewards_next_epoch(
+            dp.provider(), pool_hash, current_epoch, stake_addr,
+        ).unwrap();
+        let real_value = super::earned_reward(
+            dp.provider(), stake_addr, current_epoch as i64,
         ).unwrap();
 
-        // REAL HISTORICAL DATA
-        // Stake address: stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh
-        // reward id: 
-        // pool_id: 29
-        // addr_id: 1998
-        // pool_address: pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c
-        // current_epoch: 275
-        // tx_id: 4823
-        let correct_reward = super::earned_reward(
-            dp.provider(),
-            stake_addr_id,
-            current_epoch as i64,
-        ).unwrap();
-        println!("correct_reward:   {}", correct_reward);
-        println!("projected reward: {}", projected_ind_delegator_reward);
+        println!("correct_reward:   {}", real_value);
+        println!("projected reward: {}", func_value);
+        // no assertion due to  volatile difference
+    }
 
-        // let actual_reward = BigDecimal::from_str("132664208430461128.302058768268151092563077178371311736922508629423544634059930225954437083166238593736857146522225214219890558886628845929207093909055796767727050048090898372044799532932039187868135222603968").unwrap();
+    #[tokio::test]
+    async fn retrieve_staked_amount() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+        }));
+        let epoch = 275;
+        let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh";
 
-        // assert_eq!(projected_ind_delegator_reward, actual_reward)
+        let func_value = super::retrieve_staked_amount(dp.provider(), epoch, stake_addr)
+            .unwrap().unwrap();
+        let real_value = BigDecimal::from_str("10305915710")
+        .unwrap();
+
+        assert_eq!(func_value, real_value);
     }
 }

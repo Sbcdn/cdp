@@ -10,6 +10,8 @@ use cardano_serialization_lib::utils::from_bignum;
 use dcslc::{make_fingerprint, TransactionUnspentOutputs};
 use rweb::*;
 
+
+
 #[get("/utxos/{address}")]
 #[openapi(
     id = "api.info.utxos",
@@ -75,7 +77,7 @@ fn parse_string_vec_from_query(query: &str) -> Result<Vec<String>, RESTError> {
 #[openapi(
     id = "api.info.asset",
     tags("Mint Metadata"),
-    summary = "Retrieve minitng metadata for the specified token. expects fingerprint"
+    summary = "Retrieve minting metadata for the specified token. Expects fingerprint"
 )]
 pub async fn mint_metadata(
     fingerprint: String,
@@ -92,7 +94,7 @@ pub async fn mint_metadata(
 #[openapi(
     id = "api.info.asset",
     tags("Mint Metadata"),
-    summary = "Retrieve minitng metadata for the specified token. expects policy id and tokenname in url"
+    summary = "Retrieve minting metadata for the specified token. Expects policy id and tokenname in url"
 )]
 pub async fn mint_metadata_policy_assetname(
     policy: String,
@@ -111,7 +113,7 @@ pub async fn mint_metadata_policy_assetname(
 #[openapi(
     id = "api.info.history",
     tags("Transaction History"),
-    summary = "Retrieve minitng metadata for the specified token. expects fingerprint"
+    summary = "Retrieve minting metadata for the specified token. Expects fingerprint"
 )]
 pub async fn tx_history(
     #[query] addresses: String,
@@ -135,7 +137,7 @@ pub async fn tx_history(
 #[openapi(
     id = "api.info.history",
     tags("Transaction History"),
-    summary = "Retrieve minitng metadata for the specified token. expects fingerprint"
+    summary = "Retrieve minting metadata for the specified token. Expects fingerprint"
 )]
 pub async fn tx_history_discover(
     hash: String,
@@ -479,6 +481,54 @@ pub async fn is_nft(
         );
     }
     Ok(rweb::Json::from(serde_json::json!(supply.unwrap())))
+}
+
+#[get("/epoch/stake/amount/{stake_addr}/{epoch}")]
+#[openapi(
+    id = "api.info.stake",
+    tags("Staked Amount"),
+    summary = "Retrieve the amount of Ada staked by given address"
+)]
+pub async fn retrieve_staked_amount(
+    epoch: i32,
+    stake_addr: String,
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").unwrap(),
+    }));
+
+    dbg!(epoch.clone());
+    dbg!(stake_addr.clone());
+    
+    let staked_amount = dp.retrieve_staked_amount(epoch, &stake_addr)
+        .await
+        .map_err(|_| RESTError::Custom("Couldn't find staked amount".to_string()))?;
+    dbg!(staked_amount.clone());
+
+    Ok(rweb::Json::from(serde_json::json!(staked_amount)))
+}
+
+#[get("/reward/amount/{stake_addr}")]
+#[openapi(
+    id = "api.info.reward",
+    tags("Generated Rewards"),
+    summary = "Retrieve the amount of Ada that the given address is rewarded with for their stake"
+)]
+pub async fn retrieve_generated_rewards (
+    stake_addr: String,
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").unwrap(),
+    }));
+
+    let generated_rewards = dp
+        .retrieve_generated_rewards(&stake_addr)
+        .await
+        .map_err(|_| RESTError::Custom("Couldn't find generated rewards".to_string()))?;
+
+    Ok(rweb::Json::from(serde_json::json!(generated_rewards)))
 }
 
 #[cfg(test)]

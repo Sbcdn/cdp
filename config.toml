@@ -1,0 +1,12 @@
+[appconfigs]
+EarthNode = { ennft_policy = "55e9a9737f5ee3f3a04a80b5bc9419c87724187318bd7ac376141e10" }
+
+[connectivity]
+dbsync_url = "postgres://ubuntu@18.218.217.207/testnet?password=(1.r;!Ns11"
+#postgres://ubuntu@18.218.217.207/testnet?password=(1.r;!Ns11
+submit_endpoint_1 = "http://18.218.217.207:8090/api/submit/tx"
+submit_endpoint_2 = ""
+submit_endpoint_3 = ""
+protocoal_parameter_path = "/wmtxp/protocol_parameters_preview.json"
+cert_private_key = ""
+cert_pub_key = "-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEir1RwQJyDcKagxOHaNRTGJd7zb28InpOHHPCOus0srxIQnVZZMiWmsKoJ+5KAw8gdfIiE3fiv7+VabuMPioVhw==-----END PUBLIC KEY-----"

@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use cardano_serialization_lib::address::Address;
 use dcslc::TransactionUnspentOutputs;
 use error::DataProviderError;
+use bigdecimal::BigDecimal;
 
 #[async_trait]
 pub trait CardanoDataProvider {
@@ -120,6 +121,18 @@ pub trait CardanoDataProvider {
         addresses: &Vec<&str>,
         slot: Option<u64>,
     ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError>;
+
+    async fn retrieve_staked_amount (
+        &self,
+        epoch: i32,
+        stake_addr: &str,
+    ) -> Result<Option<BigDecimal>, DataProviderError>;
+
+    async fn retrieve_generated_rewards (
+        &self,
+        stake_addr: &str,
+    ) -> Result<Option<Vec<BigDecimal>>, DataProviderError>;
+
 }
 
 pub struct DataProvider<T: CardanoDataProvider> {
@@ -309,5 +322,20 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         slot: Option<u64>,
     ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError> {
         self.provider().tx_history(addresses, slot).await
+    }
+
+    async fn retrieve_staked_amount (
+        &self,
+        epoch: i32,
+        stake_addr: &str,
+    ) -> Result<Option<BigDecimal>, DataProviderError> {
+        dbg!(self.provider().retrieve_staked_amount(epoch, stake_addr).await)
+    }
+
+    async fn retrieve_generated_rewards (
+        &self,
+        stake_addr: &str,
+    ) -> Result<Option<Vec<BigDecimal>>, DataProviderError> {
+        dbg!(self.provider().retrieve_generated_rewards(stake_addr).await)
     }
 }

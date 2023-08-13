@@ -4,6 +4,7 @@ use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
 };
+use bigdecimal::BigDecimal;
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
@@ -183,4 +184,19 @@ pub fn txhash_spent(bfp: &KoiosProvider, txhash: &str) -> Result<bool, DataProvi
     let txh_b = hex::decode(txhash)?;
 
     Ok(false)
+}
+
+pub fn retrieve_staked_amount (
+    bfp: &KoiosProvider,
+    epoch: i32,
+    stake_addr: &str,
+) -> Result<Option<BigDecimal>, DataProviderKoiosError> {
+    Ok(None)
+}
+
+pub fn retrieve_generated_rewards (
+    bfp: &KoiosProvider,
+    stake_addr: &str,
+) -> Result<Option<Vec<BigDecimal>>, DataProviderKoiosError> {
+    Ok(None)
 }

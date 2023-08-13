@@ -1,4 +1,4 @@
-use crate::models::CDPDatum;
+use crate::models::{CDPDatum, RewardView};
 
 use self::error::DataProviderCarbError;
 use async_trait::async_trait;
@@ -248,7 +248,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<BigDecimal>>, crate::provider::error::DataProviderError> {
+    ) -> Result<Option<Vec<RewardView>>, crate::provider::error::DataProviderError> {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 }

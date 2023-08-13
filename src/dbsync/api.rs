@@ -4,7 +4,7 @@ use super::schema::*;
 use crate::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, ScriptView, StakeDelegationView,
     StakeDeregistrationView, StakeRegistrationView, TokenInfoView, TxHistoryListQuery,
-    TxHistoryListView, UTxOView, WithdrawalView,
+    TxHistoryListView, UTxOView, WithdrawalView, RewardView
 };
 use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
@@ -1300,14 +1300,23 @@ pub fn retrieve_staked_amount(
 pub fn retrieve_generated_rewards(
     dbs: &DBSyncProvider,
     stake_addr: &str,
-) -> Result<Option<Vec<BigDecimal>>, DataProviderDBSyncError> {
-    Ok(reward::table
+) -> Result<Option<Vec<RewardView>>, DataProviderDBSyncError> {
+    Ok(Some(reward::table
         .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
-        .select(reward::amount)
-        .load::<BigDecimal>(&mut dbs.connect()?)
+        .select((reward::amount, reward::earned_epoch, reward::spendable_epoch))
+        .load::<(BigDecimal, i64, i64)>(&mut dbs.connect()?)
         .ok()
-    )
+        .unwrap()
+        .into_iter()
+        .map(|t| {
+            RewardView{
+                amount: t.0.to_u64().unwrap(),
+                earned_epoch: t.1,
+                spendable_epoch: t.2,
+            }
+        }).collect::<Vec<RewardView>>()
+    ))
 }
 
 // R parameter in reward projection
@@ -1403,13 +1412,11 @@ pub fn reward_projection_parameters(
     current_epoch: i32, // latest transaction
     pool_addr: &str,
 ) -> Result<RewardProjectionParameters, DataProviderDBSyncError>{
-    let Sigma = BigDecimal::from_str("1").unwrap(); // 0.678 gives optimal projection
-
     #[allow(non_snake_case)]
     let R = total_available_rewards(dbs, current_epoch)?; // correct
     let a0 = pledge_influence_factor(dbs, current_epoch)?; // correct
     let z0 = relative_pool_saturation_size(dbs, current_epoch)?; // correct
-    let sigma = stake_delegated_to_pool(dbs, pool_addr, current_epoch)? * Sigma;
+    let sigma = stake_delegated_to_pool(dbs, pool_addr, current_epoch)?;
     let s = stake_pledged_by_owner(dbs, pool_addr, current_epoch)?;
     
     let sigma_ = if sigma < z0 {sigma.clone()} else {z0.clone()}; // min(sigma, z0)

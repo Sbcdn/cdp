@@ -247,7 +247,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<BigDecimal>>, crate::provider::error::DataProviderError> {
+    ) -> Result<Option<Vec<crate::models::RewardView>>, crate::provider::error::DataProviderError> {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 }

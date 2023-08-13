@@ -2,7 +2,7 @@ use super::error::DataProviderKoiosError;
 use super::KoiosProvider;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
 use bigdecimal::BigDecimal;
 
@@ -197,6 +197,6 @@ pub fn retrieve_staked_amount (
 pub fn retrieve_generated_rewards (
     bfp: &KoiosProvider,
     stake_addr: &str,
-) -> Result<Option<Vec<BigDecimal>>, DataProviderKoiosError> {
+) -> Result<Option<Vec<RewardView>>, DataProviderKoiosError> {
     Ok(None)
 }

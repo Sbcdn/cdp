@@ -4,7 +4,7 @@ use crate::models::CDPDatum;
 
 use super::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
 use async_trait::async_trait;
 use cardano_serialization_lib::address::Address;
@@ -131,7 +131,7 @@ pub trait CardanoDataProvider {
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<BigDecimal>>, DataProviderError>;
+    ) -> Result<Option<Vec<RewardView>>, DataProviderError>;
 
 }
 
@@ -335,7 +335,7 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<BigDecimal>>, DataProviderError> {
+    ) -> Result<Option<Vec<RewardView>>, DataProviderError> {
         dbg!(self.provider().retrieve_generated_rewards(stake_addr).await)
     }
 }

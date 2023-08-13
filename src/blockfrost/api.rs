@@ -4,7 +4,7 @@ use super::error::DataProviderBlockfrostError;
 use super::BlockfrostProvider;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
 use blockfrost::{AccountAddress, AddressUtxo};
 use bigdecimal::BigDecimal;
@@ -252,6 +252,6 @@ pub fn retrieve_staked_amount (
 pub fn retrieve_generated_rewards (
     bfp: &BlockfrostProvider,
     stake_addr: &str,
-) -> Result<Option<Vec<BigDecimal>>, crate::provider::error::DataProviderError> {
+) -> Result<Option<Vec<RewardView>>, crate::provider::error::DataProviderError> {
     Ok(None)
 }

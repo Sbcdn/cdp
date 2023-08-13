@@ -10,7 +10,7 @@ use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use bigdecimal::BigDecimal;
 
-use crate::models::CDPDatum;
+use crate::models::{CDPDatum, RewardView};
 
 extern crate pretty_env_logger;
 
@@ -256,7 +256,7 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
-    ) -> Result<Option<Vec<BigDecimal>>, crate::provider::error::DataProviderError> {
+    ) -> Result<Option<Vec<RewardView>>, crate::provider::error::DataProviderError> {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 }

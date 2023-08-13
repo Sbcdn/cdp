@@ -2,7 +2,7 @@ use super::error::DataProviderCarbError;
 use super::CarbProvider;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
 
 use bigdecimal::BigDecimal;
@@ -194,6 +194,6 @@ pub fn retrieve_staked_amount (
 pub fn retrieve_generated_rewards (
     bfp: &CarbProvider,
     stake_addr: &str,
-) -> Result<Option<Vec<BigDecimal>>, crate::provider::error::DataProviderError> {
+) -> Result<Option<Vec<RewardView>>, crate::provider::error::DataProviderError> {
     Ok(None)
 }

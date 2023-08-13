@@ -9,6 +9,7 @@ use ::log::debug;
 use cardano_serialization_lib::utils::from_bignum;
 use dcslc::{make_fingerprint, TransactionUnspentOutputs};
 use rweb::*;
+use serde_json::json;
 
 
 
@@ -55,7 +56,7 @@ pub async fn address_exists(
 
     let result = dp.addresses_exist(&addresses).await.unwrap();
 
-    Ok(rweb::Json::from(serde_json::json!(result)))
+    Ok(rweb::Json::from(json!(result)))
 }
 
 fn parse_string_vec_from_query(query: &str) -> Result<Vec<String>, RESTError> {
@@ -87,7 +88,7 @@ pub async fn mint_metadata(
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
     let metadata: TokenInfoView = dp.mint_metadata(&fingerprint).await.unwrap();
-    Ok(rweb::Json::from(serde_json::json!(metadata)))
+    Ok(rweb::Json::from(json!(metadata)))
 }
 
 #[get("/asset/metadata/{policy}/{assetname}")]
@@ -106,7 +107,7 @@ pub async fn mint_metadata_policy_assetname(
     }));
     let fingerprint = make_fingerprint(&policy, &assetname).unwrap();
     let metadata: TokenInfoView = dp.mint_metadata(&fingerprint).await.unwrap();
-    Ok(rweb::Json::from(serde_json::json!(metadata)))
+    Ok(rweb::Json::from(json!(metadata)))
 }
 
 #[get("/history/address/")]
@@ -130,7 +131,7 @@ pub async fn tx_history(
 
     let history = dp.tx_history(&addresses, slot).await.unwrap();
 
-    Ok(rweb::Json::from(serde_json::json!(history)))
+    Ok(rweb::Json::from(json!(history)))
 }
 
 #[get("/history/discover/{hash}")]
@@ -150,7 +151,7 @@ pub async fn tx_history_discover(
     let tx = crate::dbsync::discover_transaction(dp.provider(), &hash).await;
 
     match tx {
-        Ok(tx) => Ok(rweb::Json::from(serde_json::json!(tx))),
+        Ok(tx) => Ok(rweb::Json::from(json!(tx))),
         Err(e) => make_error(e.to_string(), None, None),
     }
 }
@@ -177,7 +178,7 @@ pub async fn handle_get_asset_for_addresses(
         }
     };
 
-    Ok(rweb::Json::from(serde_json::json!(
+    Ok(rweb::Json::from(json!(
         get_asset_for_addresses(&addresses).await?
     )))
 }
@@ -389,7 +390,7 @@ pub async fn handle_asset_for_stake_address(
         }
     }
     debug!("Handles summed: {:?}", handles_summed);
-    Ok(rweb::Json::from(serde_json::json!(handles_summed)))
+    Ok(rweb::Json::from(json!(handles_summed)))
 }
 
 #[get("/pools/{page}")]
@@ -415,7 +416,7 @@ pub async fn retrieve_active_pools(
             None,
         );
     }
-    Ok(rweb::Json::from(serde_json::json!(pools_paged[page])))
+    Ok(rweb::Json::from(json!(pools_paged[page])))
 }
 
 #[get("/tokens/supply/{fingerprint}")]
@@ -439,7 +440,7 @@ pub async fn token_supply(
             None,
         );
     }
-    Ok(rweb::Json::from(serde_json::json!(supply.unwrap())))
+    Ok(rweb::Json::from(json!(supply.unwrap())))
 }
 
 #[get("/tokens/isNft/")]
@@ -480,7 +481,7 @@ pub async fn is_nft(
             None,
         );
     }
-    Ok(rweb::Json::from(serde_json::json!(supply.unwrap())))
+    Ok(rweb::Json::from(json!(supply.unwrap())))
 }
 
 #[get("/epoch/stake/amount/{stake_addr}/{epoch}")]
@@ -506,7 +507,7 @@ pub async fn retrieve_staked_amount(
         .map_err(|_| RESTError::Custom("Couldn't find staked amount".to_string()))?;
     dbg!(staked_amount.clone());
 
-    Ok(rweb::Json::from(serde_json::json!(staked_amount)))
+    Ok(rweb::Json::from(json!(staked_amount)))
 }
 
 #[get("/reward/amount/{stake_addr}")]
@@ -528,7 +529,16 @@ pub async fn retrieve_generated_rewards (
         .await
         .map_err(|_| RESTError::Custom("Couldn't find generated rewards".to_string()))?;
 
-    Ok(rweb::Json::from(serde_json::json!(generated_rewards)))
+    // let mut result = vec![];
+    // for t in generated_rewards.unwrap() {
+    //     result.push(json!({
+    //         "amount": t.0,
+    //         "earned_epoch": t.1,
+    //         "spendable_epoch": t.2
+    //     }));
+    // }
+
+    Ok(rweb::Json::from(json!(generated_rewards)))
 }
 
 #[cfg(test)]

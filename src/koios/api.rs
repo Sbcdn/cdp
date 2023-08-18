@@ -2,8 +2,9 @@ use super::error::DataProviderKoiosError;
 use super::KoiosProvider;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
+use bigdecimal::BigDecimal;
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
@@ -183,4 +184,19 @@ pub fn txhash_spent(bfp: &KoiosProvider, txhash: &str) -> Result<bool, DataProvi
     let txh_b = hex::decode(txhash)?;
 
     Ok(false)
+}
+
+pub fn retrieve_staked_amount (
+    bfp: &KoiosProvider,
+    epoch: i32,
+    stake_addr: &str,
+) -> Result<BigDecimal, DataProviderKoiosError> {
+    Ok(BigDecimal::from(0))
+}
+
+pub fn retrieve_generated_rewards (
+    bfp: &KoiosProvider,
+    stake_addr: &str,
+) -> Result<Vec<RewardView>, DataProviderKoiosError> {
+    Ok(vec![])
 }

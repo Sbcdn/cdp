@@ -4,9 +4,11 @@ use super::error::DataProviderBlockfrostError;
 use super::BlockfrostProvider;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
+use crate::provider::error::DataProviderError;
 use blockfrost::{AccountAddress, AddressUtxo};
+use bigdecimal::BigDecimal;
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
@@ -117,7 +119,7 @@ pub async fn asset_utxos_on_addr(
 pub fn find_datums_for_tx(
     bfp: &BlockfrostProvider,
     txid: &Vec<u8>,
-) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+) -> Result<Vec<CDPDatum>, DataProviderError> {
     todo!();
 }
 
@@ -238,4 +240,19 @@ pub fn txhash_spent(
     let txh_b = hex::decode(txhash)?;
 
     Ok(false)
+}
+
+pub fn retrieve_staked_amount (
+    bfp: &BlockfrostProvider,
+    epoch: i32,
+    stake_addr: &str,
+) -> Result<BigDecimal, DataProviderError> {
+    Ok(BigDecimal::from(0))
+}
+
+pub fn retrieve_generated_rewards (
+    bfp: &BlockfrostProvider,
+    stake_addr: &str,
+) -> Result<Vec<RewardView>, DataProviderError> {
+    Ok(vec![])
 }

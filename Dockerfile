@@ -1,5 +1,5 @@
 #FROM lukemathwalker/cargo-chef:latest-rust-1.61.0  -> 1.67 is latest
-FROM rust:1.66.0-slim-bullseye  AS planer
+FROM rust:1.67.0-slim-bullseye  AS planer
 #COPY . .
 
 

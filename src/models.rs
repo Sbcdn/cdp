@@ -273,7 +273,19 @@ impl AssetHandle {
         out
     }
 
-    pub fn same_asset(&self, other: &Self) -> bool {
+    pub fn new_empty() -> Self {
+        AssetHandle {
+            fingerprint: None,
+            policy: None,
+            tokenname: None,
+            amount: 0,
+            metadata: None,
+        }
+    }
+}
+
+impl PartialEq for AssetHandle {
+    fn eq(&self, other: &Self) -> bool {
         match self.policy {
             Some(_) => {
                 self.fingerprint == other.fingerprint
@@ -287,16 +299,6 @@ impl AssetHandle {
                     && self.tokenname.is_none()
                     && self.fingerprint.is_none()
             }
-        }
-    }
-
-    pub fn new_empty() -> Self {
-        AssetHandle {
-            fingerprint: None,
-            policy: None,
-            tokenname: None,
-            amount: 0,
-            metadata: None,
         }
     }
 }

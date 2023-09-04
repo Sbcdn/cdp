@@ -471,7 +471,7 @@ pub fn token_info(
         .first::<(Vec<u8>, Vec<u8>)>(&mut dbs.connect()?)?;
 
     let policy = hex::encode(fingerprint.0);
-    let tokenname = hex::encode(fingerprint.1);
+    let tokenname = fingerprint.1;
 
     let ti = TokenInfoView {
         policy,
@@ -688,14 +688,24 @@ pub fn mint_metadata(
         )>(&mut dbs.connect()?)
         .ok();
     if let Some(m) = metadata {
+        let quantity = ma_tx_mint::table
+            .inner_join(multi_asset::table.on(ma_tx_mint::ident.eq(multi_asset::id)))
+            .filter(multi_asset::fingerprint.eq(m.0.clone()))
+            .select(ma_tx_mint::quantity)
+            .load::<BigDecimal>(&mut dbs.connect()?)
+            .ok()
+            .unwrap()
+            .iter()
+            .map(|n| n.to_u64())
+            .sum();
         Ok(TokenInfoView {
             fingerprint: m.0,
             policy: hex::encode(m.1),
-            tokenname: String::from_utf8(m.2)?,
+            tokenname: m.2,
             meta_key: Some(m.3.to_i64().unwrap()),
             json: m.4,
             txhash: Some(hex::encode(m.5)),
-            quantity: None,
+            quantity: quantity,
             mint_slot: m.6,
         })
     } else {
@@ -715,14 +725,24 @@ pub fn mint_metadata(
             .first::<(String, Vec<u8>, Vec<u8>, Vec<u8>, Option<i64>)>(&mut dbs.connect()?)
             .ok();
         if let Some(m) = metadata {
+            let quantity = ma_tx_mint::table
+                .inner_join(multi_asset::table.on(ma_tx_mint::ident.eq(multi_asset::id)))
+                .filter(multi_asset::fingerprint.eq(m.0.clone()))
+                .select(ma_tx_mint::quantity)
+                .load::<BigDecimal>(&mut dbs.connect()?)
+                .ok()
+                .unwrap()
+                .iter()
+                .map(|n| n.to_u64())
+                .sum();
             Ok(TokenInfoView {
                 fingerprint: m.0,
                 policy: hex::encode(m.1),
-                tokenname: String::from_utf8(m.2)?,
+                tokenname: m.2,
                 meta_key: None,
                 json: None,
                 txhash: Some(hex::encode(m.3)),
-                quantity: None,
+                quantity: quantity,
                 mint_slot: m.4,
             })
         } else {
@@ -1796,6 +1816,7 @@ pub async fn epoch_change(
 mod tests {
     use crate::{provider::CardanoDataProvider, dbsync::DataProviderDBSyncError};
     use bigdecimal::BigDecimal;
+    use itertools::Itertools;
     use std::str::FromStr;
 
     #[tokio::test]
@@ -1803,7 +1824,7 @@ mod tests {
         let r = vec!["addr_test1qqt86eq9972q3qttj6ztje97llasktzfzvhmdccqjlqjaq2cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qy6q5t2","addr_test1qpg8ehvgj9zxrx59et72yjn2p02xwsm3l89jwj8ujcj63ujcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw23emu","addr_test1qqdp3cry5vc2gfjljctdu638tvkcqfx40fjunht9hrmru5zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qnaxxgs","addr_test1qr2mw080ujz0unmpn9lx5ftfuewc6htyr6v3a0svul2zgezcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qgryf7t","addr_test1qr7tqh7tsg4lut3jv6tsfwlv464m6knjjw90ugyz8uzgr6zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qt0jxzj","addr_test1qrscurjp292sxv24sepj7ghq4ydkkekzaz53zwfswcna6ljcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6q8pu3l5","addr_test1qqssrphse6qmp9h0ksu5vfmsx99tfl2lc6rhvy2spd5wr86cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw59j4j","addr_test1qqgagc0fy6nm0qe4h8zqxsg952tqjeg7l7j0agd0cx4u25zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qxvept2"];
 
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let t = dp.tx_history(&r, None).await.unwrap();
         println!("{t:?}");
@@ -1812,7 +1833,7 @@ mod tests {
     #[tokio::test]
     async fn test_discover_transaction() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let t = crate::dbsync::discover_transaction(
             dp.provider(),
@@ -1825,7 +1846,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_pools() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let t = crate::dbsync::get_pools(dp.provider()).await;
         println!("{t:?}");
@@ -1834,7 +1855,7 @@ mod tests {
     #[tokio::test]
     async fn test_epoch_nonce() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let t = crate::dbsync::epoch_nonce(dp.provider(), 205)
             .await
@@ -1845,7 +1866,7 @@ mod tests {
     #[tokio::test]
     async fn test_is_nft() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let t = crate::dbsync::is_nft(
             dp.provider(),
@@ -1864,7 +1885,7 @@ mod tests {
     #[tokio::test]
     async fn test_supply() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let t = crate::dbsync::token_supply(
             dp.provider(),
@@ -1881,7 +1902,7 @@ mod tests {
     #[tokio::test]
     async fn reward_projection() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
 
         let pool_hash = "pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c";
@@ -1903,7 +1924,7 @@ mod tests {
     #[tokio::test]
     async fn retrieve_staked_amount() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: "postgres://ubuntu:(1.r;!Ns11@18.218.217.207/testnet".to_string(),
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let epoch = 275;
         let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh";
@@ -1914,5 +1935,64 @@ mod tests {
         .unwrap();
 
         assert_eq!(func_value, real_value);
+    }
+
+    #[tokio::test]
+    async fn mint_metadata() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap()
+        }));
+        let fingerprint_in = "asset1kngmwlxpfzc6pk027zvhsfpprp452gt3enhhxh";
+        let func_value = super::mint_metadata(dp.provider(), fingerprint_in).unwrap();
+        let real_value = super::TokenInfoView {
+            fingerprint: "asset1kngmwlxpfzc6pk027zvhsfpprp452gt3enhhxh".to_string(),
+            policy: "994cf4c18f5613ca49c275f63d464b6d95123bfa8985e82b24b5680b".to_string(),
+            tokenname: "MyAmazingNFT".bytes().collect_vec(),
+            quantity: None,
+            meta_key: Some(721),
+            json: Some(
+                serde_json::Value::from_str(
+                    "{\"994cf4c18f5613ca49c275f63d464b6d95123bfa8985e82b24b5680b\": {\"MyAmazingNFT\": {\"name\": \"NFT FTW: MyAmazingNFT\", \"image\": \"ipfs://XXXXYYYYZZZZ\"}}}"
+                ).unwrap()
+            ),
+            mint_slot: Some(1888394),
+            txhash: Some("9d276f5c9c4a785c349fa1daaaae4ab86b1c141ac547f55c2f8c8a0432b2ed04".to_string()),
+        };
+        assert_eq!(func_value.fingerprint, real_value.fingerprint);
+        assert_eq!(func_value.policy, real_value.policy);
+        assert_eq!(func_value.tokenname, real_value.tokenname);
+        assert_eq!(func_value.quantity, real_value.quantity);
+        assert_eq!(func_value.meta_key, real_value.meta_key);
+        assert_eq!(func_value.json, real_value.json);
+        assert_eq!(func_value.mint_slot, real_value.mint_slot);
+        assert_eq!(func_value.txhash, real_value.txhash);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn mint_metadata_bug_CMW_78() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap()
+        }));
+        let fingerprint_in = "asset162kdtwq54e5khz5y6naa55xqvk0zk5fpce8c76"; // contains non-UTF8 characters
+        let func_value = super::mint_metadata(dp.provider(), fingerprint_in).unwrap();
+        let real_value = super::TokenInfoView {
+            fingerprint: "asset162kdtwq54e5khz5y6naa55xqvk0zk5fpce8c76".to_string(),
+            policy: "8cbe56131657c928cee716677bd3eac885f9fcad10f9fa70e533f635".to_string(),
+            tokenname: vec![0, 6, 64, 160, 100, 100],
+            quantity: Some(1),
+            meta_key: None,
+            json: None,
+            mint_slot: Some(829338),
+            txhash: Some("1727810423ca5719a366af35058b7164d7fee44c8c1ca6e6ee6ff9b35490bf63".to_string()),
+        };
+        assert_eq!(func_value.fingerprint, real_value.fingerprint);
+        assert_eq!(func_value.policy, real_value.policy);
+        assert_eq!(func_value.tokenname, real_value.tokenname);
+        assert_eq!(func_value.quantity, real_value.quantity);
+        assert_eq!(func_value.meta_key, real_value.meta_key);
+        assert_eq!(func_value.json, real_value.json);
+        assert_eq!(func_value.mint_slot, real_value.mint_slot);
+        assert_eq!(func_value.txhash, real_value.txhash);
     }
 }

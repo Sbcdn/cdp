@@ -1,4 +1,15 @@
 /target
-Cargo.lock
+.env
 .vscode
+Cargo.lock
+cert.pem
 config.toml
+config_testnet.toml
+ec_key.pem
+msg.base64.sig.txt
+msg.digest.txt
+msg.signature.txt
+msg.txt
+private.ec.key
+private.pem
+public.pem

@@ -217,7 +217,7 @@ pub fn mint_metadata(
     Ok(TokenInfoView {
         fingerprint: "".to_owned(),
         policy: hex::encode(""),
-        tokenname: String::from_utf8(hex::decode("")?)?,
+        tokenname: hex::decode("")?,
         meta_key: None,
         json: None,
         txhash: None,

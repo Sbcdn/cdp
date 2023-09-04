@@ -471,7 +471,7 @@ pub fn token_info(
         .first::<(Vec<u8>, Vec<u8>)>(&mut dbs.connect()?)?;
 
     let policy = hex::encode(fingerprint.0);
-    let tokenname = fingerprint.1;
+    let tokenname = hex::encode(fingerprint.1);
 
     let ti = TokenInfoView {
         policy,
@@ -701,7 +701,7 @@ pub fn mint_metadata(
         Ok(TokenInfoView {
             fingerprint: m.0,
             policy: hex::encode(m.1),
-            tokenname: m.2,
+            tokenname: hex::encode(m.2),
             meta_key: Some(m.3.to_i64().unwrap()),
             json: m.4,
             txhash: Some(hex::encode(m.5)),
@@ -738,7 +738,7 @@ pub fn mint_metadata(
             Ok(TokenInfoView {
                 fingerprint: m.0,
                 policy: hex::encode(m.1),
-                tokenname: m.2,
+                tokenname: hex::encode(m.2),
                 meta_key: None,
                 json: None,
                 txhash: Some(hex::encode(m.3)),
@@ -1947,7 +1947,7 @@ mod tests {
         let real_value = super::TokenInfoView {
             fingerprint: "asset1kngmwlxpfzc6pk027zvhsfpprp452gt3enhhxh".to_string(),
             policy: "994cf4c18f5613ca49c275f63d464b6d95123bfa8985e82b24b5680b".to_string(),
-            tokenname: "MyAmazingNFT".bytes().collect_vec(),
+            tokenname: hex::encode("MyAmazingNFT1".bytes().collect_vec()),
             quantity: None,
             meta_key: Some(721),
             json: Some(
@@ -1979,7 +1979,7 @@ mod tests {
         let real_value = super::TokenInfoView {
             fingerprint: "asset162kdtwq54e5khz5y6naa55xqvk0zk5fpce8c76".to_string(),
             policy: "8cbe56131657c928cee716677bd3eac885f9fcad10f9fa70e533f635".to_string(),
-            tokenname: vec![0, 6, 64, 160, 100, 100],
+            tokenname: "000640a06464".to_string(),
             quantity: Some(1),
             meta_key: None,
             json: None,

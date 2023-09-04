@@ -85,7 +85,7 @@ pub async fn mint_metadata(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: dotenv::var("DBSYNC_URL").unwrap(),
     }));
     let metadata: TokenInfoView = dp.mint_metadata(&fingerprint).await.unwrap();
     Ok(rweb::Json::from(json!(metadata)))

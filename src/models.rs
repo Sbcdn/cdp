@@ -12,7 +12,7 @@ pub type Tokens = Vec<Token>;
 pub struct TokenInfoView {
     pub fingerprint: String,
     pub policy: String,
-    pub tokenname: Vec<u8>,
+    pub tokenname: String,
     pub quantity: Option<u64>,
     pub meta_key: Option<i64>,
     pub json: Option<serde_json::Value>,

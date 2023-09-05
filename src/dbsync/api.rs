@@ -698,10 +698,15 @@ pub fn mint_metadata(
             .iter()
             .map(|n| n.to_u64())
             .sum();
+        let tokenname = if let Ok(tn) = String::from_utf8(m.2.clone()) {
+            tn
+        } else {
+            hex::encode(m.2.clone())
+        };
         Ok(TokenInfoView {
             fingerprint: m.0,
             policy: hex::encode(m.1),
-            tokenname: hex::encode(m.2),
+            tokenname,
             meta_key: Some(m.3.to_i64().unwrap()),
             json: m.4,
             txhash: Some(hex::encode(m.5)),
@@ -735,10 +740,15 @@ pub fn mint_metadata(
                 .iter()
                 .map(|n| n.to_u64())
                 .sum();
+            let tokenname = if let Ok(tn) = String::from_utf8(m.2.clone()) {
+                tn
+            } else {
+                hex::encode(m.2.clone())
+            };
             Ok(TokenInfoView {
                 fingerprint: m.0,
                 policy: hex::encode(m.1),
-                tokenname: hex::encode(m.2),
+                tokenname,
                 meta_key: None,
                 json: None,
                 txhash: Some(hex::encode(m.3)),
@@ -1947,7 +1957,7 @@ mod tests {
         let real_value = super::TokenInfoView {
             fingerprint: "asset1kngmwlxpfzc6pk027zvhsfpprp452gt3enhhxh".to_string(),
             policy: "994cf4c18f5613ca49c275f63d464b6d95123bfa8985e82b24b5680b".to_string(),
-            tokenname: hex::encode("MyAmazingNFT1".bytes().collect_vec()),
+            tokenname: "MyAmazingNFT".to_string(),
             quantity: None,
             meta_key: Some(721),
             json: Some(

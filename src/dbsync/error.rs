@@ -3,10 +3,12 @@ use thiserror::Error;
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
 pub enum DataProviderDBSyncError {
-    #[error("DBSync Error")]
+    #[error("DBSync Error: {0}")]
     DBSyncError(String),
-    #[error("RequestValueNotFound")]
+    #[error("Requested Value could not be found {0}")]
     RequestValueNotFound(String),
+    #[error("Could not find metadata for the requested asset {0}")]
+    MintMetadataNotFound(String),
     #[error("Custom Error")]
     Custom(String),
     #[error(transparent)]

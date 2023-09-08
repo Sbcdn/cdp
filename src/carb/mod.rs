@@ -1,10 +1,17 @@
-use crate::models::CDPDatum;
+use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView,
+    DelegationView, StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView
+
+};
+use crate::provider::error::DataProviderError;
 
 use self::error::DataProviderCarbError;
 use async_trait::async_trait;
+use bigdecimal::BigDecimal;
+
 pub mod api;
 pub mod error;
 pub mod models;
+
 
 pub struct Config {
     pub url: String,
@@ -37,28 +44,28 @@ impl super::provider::CardanoDataProvider for CarbProvider {
     async fn wallet_utxos(
         &self,
         stake_addr: &str,
-    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
+    ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
         Ok(api::get_stake_address_utxos(self, stake_addr)?)
     }
 
     async fn script_utxos(
         &self,
         addr: &str,
-    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
+    ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
         Ok(api::get_address_utxos(self, addr)?)
     }
 
     async fn asset_utxos_on_addr(
         &self,
         addr: &str,
-    ) -> Result<dcslc::TransactionUnspentOutputs, crate::provider::error::DataProviderError> {
+    ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
         Ok(api::asset_utxos_on_addr(self, addr)?)
     }
 
     async fn mint_metadata(
         &self,
         fingerprint_in: &str,
-    ) -> Result<crate::models::TokenInfoView, crate::provider::error::DataProviderError> {
+    ) -> Result<TokenInfoView, DataProviderError> {
         Ok(api::mint_metadata(self, fingerprint_in)?)
     }
 
@@ -67,7 +74,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         stake_address_in: &str,
     ) -> Result<
         cardano_serialization_lib::address::Address,
-        crate::provider::error::DataProviderError,
+        DataProviderError,
     > {
         let str_addr = api::select_addr_of_first_transaction(self, stake_address_in)?;
         Ok(dcslc::addr_from_str(&str_addr)?)
@@ -77,7 +84,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         addr: &str,
         datumhash: &Vec<u8>,
-    ) -> Result<dcslc::TransactionUnspentOutput, crate::provider::error::DataProviderError> {
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
         let utxo = api::utxo_by_dataumhash(self, addr, datumhash)?;
         Ok(utxo)
     }
@@ -87,7 +94,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         txhash: &Vec<u8>,
         index: i16,
-    ) -> Result<dcslc::TransactionUnspentOutput, crate::provider::error::DataProviderError> {
+    ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
         let utxo = api::utxo_by_txid(self, txhash, index)?;
         Ok(utxo)
     }
@@ -96,7 +103,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         tx_id: i64,
         tx_index: i16,
-    ) -> Result<Vec<crate::models::CardanoNativeAssetView>, crate::provider::error::DataProviderError>
+    ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>
     {
         Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
     }
@@ -104,11 +111,11 @@ impl super::provider::CardanoDataProvider for CarbProvider {
     async fn find_datums_for_tx(
         &self,
         txid: &Vec<u8>,
-    ) -> Result<Vec<CDPDatum>, crate::provider::error::DataProviderError> {
+    ) -> Result<Vec<CDPDatum>, DataProviderError> {
         Ok(api::find_datums_for_tx(self, txid)?)
     }
 
-    async fn slot(&self) -> Result<i64, crate::provider::error::DataProviderError> {
+    async fn slot(&self) -> Result<i64, DataProviderError> {
         Ok(api::slot(self)?)
     }
 
@@ -116,7 +123,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         pool: &str,
         epoch: i32,
-    ) -> Result<Vec<crate::models::StakeDelegationView>, crate::provider::error::DataProviderError>
+    ) -> Result<Vec<StakeDelegationView>, DataProviderError>
     {
         Ok(api::stakers_on_pool(self, pool, epoch)?)
     }
@@ -126,7 +133,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         pool: &str,
         start_epoch: i64,
         end_epoch: i64,
-    ) -> Result<Vec<crate::models::DelegationView>, crate::provider::error::DataProviderError> {
+    ) -> Result<Vec<DelegationView>, DataProviderError> {
         Ok(api::deligations_per_pool_for_epochs(
             self,
             pool,
@@ -139,11 +146,11 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         pool: &str,
         epoch: i32,
-    ) -> Result<u64, crate::provider::error::DataProviderError> {
+    ) -> Result<u64, DataProviderError> {
         Ok(api::pool_total_stake(self, pool, epoch)?)
     }
 
-    async fn current_epoch(&self) -> Result<i32, crate::provider::error::DataProviderError> {
+    async fn current_epoch(&self) -> Result<i32, DataProviderError> {
         Ok(api::current_epoch(self)?)
     }
 
@@ -151,21 +158,21 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         policy: &str,
         tokenname: &str,
-    ) -> Result<String, crate::provider::error::DataProviderError> {
+    ) -> Result<String, DataProviderError> {
         Ok(api::fingerprint(self, policy, tokenname)?)
     }
 
     async fn token_info(
         &self,
         fingerprint_in: &str,
-    ) -> Result<crate::models::TokenInfoView, crate::provider::error::DataProviderError> {
+    ) -> Result<TokenInfoView, DataProviderError> {
         Ok(api::token_info(self, fingerprint_in)?)
     }
 
     async fn stake_registration(
         &self,
         stake_addr_in: &str,
-    ) -> Result<Vec<crate::models::StakeRegistrationView>, crate::provider::error::DataProviderError>
+    ) -> Result<Vec<StakeRegistrationView>, DataProviderError>
     {
         Ok(api::stake_registration(self, stake_addr_in)?)
     }
@@ -174,8 +181,8 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         stake_addr_in: &str,
     ) -> Result<
-        Vec<crate::models::StakeDeregistrationView>,
-        crate::provider::error::DataProviderError,
+        Vec<StakeDeregistrationView>,
+        DataProviderError,
     > {
         Ok(api::stake_deregistration(self, stake_addr_in)?)
     }
@@ -183,7 +190,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
     async fn check_stakeaddr_registered(
         &self,
         stake_addr_in: &str,
-    ) -> Result<bool, crate::provider::error::DataProviderError> {
+    ) -> Result<bool, DataProviderError> {
         Ok(api::check_stakeaddr_registered(self, stake_addr_in)?)
     }
 
@@ -191,7 +198,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         fingerprint_in: &str,
         min_amount: Option<&i64>,
-    ) -> Result<Vec<crate::models::HoldingWalletView>, crate::provider::error::DataProviderError>
+    ) -> Result<Vec<HoldingWalletView>, DataProviderError>
     {
         Ok(api::lookup_token_holders(self, fingerprint_in, min_amount)?)
     }
@@ -199,7 +206,7 @@ impl super::provider::CardanoDataProvider for CarbProvider {
     async fn lookup_nft_token_holders(
         &self,
         policy: &str,
-    ) -> Result<Vec<crate::models::HoldingWalletView>, crate::provider::error::DataProviderError>
+    ) -> Result<Vec<HoldingWalletView>, DataProviderError>
     {
         Ok(api::lookup_nft_token_holders(self, policy)?)
     }
@@ -207,21 +214,21 @@ impl super::provider::CardanoDataProvider for CarbProvider {
     async fn pool_valid(
         &self,
         pool_id: &str,
-    ) -> Result<bool, crate::provider::error::DataProviderError> {
+    ) -> Result<bool, DataProviderError> {
         Ok(api::pool_valid(self, pool_id)?)
     }
 
     async fn txhash_spent(
         &self,
         txhash: &str,
-    ) -> Result<bool, crate::provider::error::DataProviderError> {
+    ) -> Result<bool, DataProviderError> {
         Ok(api::txhash_spent(self, txhash)?)
     }
 
     async fn addresses_exist(
         &self,
         address: &Vec<&str>,
-    ) -> Result<Vec<bool>, crate::provider::error::DataProviderError> {
+    ) -> Result<Vec<bool>, DataProviderError> {
         Ok(Vec::new())
     }
 
@@ -229,8 +236,23 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         &self,
         addresses: &Vec<&str>,
         slot: Option<u64>,
-    ) -> Result<Vec<crate::models::TxHistoryListView>, crate::provider::error::DataProviderError>
+    ) -> Result<Vec<TxHistoryListView>, DataProviderError>
     {
         Ok(Vec::new())
+    }
+
+    async fn retrieve_staked_amount (
+        &self,
+        epoch: i32,
+        stake_addr: &str,
+    ) -> Result<BigDecimal, DataProviderError> {
+        Ok(api::retrieve_staked_amount(self, epoch, stake_addr)?)
+    }
+
+    async fn retrieve_generated_rewards (
+        &self,
+        stake_addr: &str,
+    ) -> Result<Vec<RewardView>, DataProviderError> {
+        Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 }

@@ -1,8 +1,7 @@
 use std::str::from_utf8;
 
-
-use crate::models::{AssetHandle, PoolView};
 use crate::dbsync::get_stake_address_utxos_dep;
+use crate::models::{AssetHandle, PoolView};
 use crate::server::error::RESTError;
 use crate::server::filter::with_auth;
 use crate::server::handler::make_error;
@@ -12,8 +11,6 @@ use cardano_serialization_lib::utils::from_bignum;
 use dcslc::{make_fingerprint, TransactionUnspentOutputs};
 use rweb::*;
 use serde_json::json;
-
-
 
 #[get("/utxos/{address}")]
 #[openapi(
@@ -89,7 +86,10 @@ pub async fn mint_metadata(
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
         db_path: dotenv::var("DBSYNC_URL").unwrap(),
     }));
-    let metadata: TokenInfoView = dp.mint_metadata(&fingerprint).await.unwrap();
+    let metadata: TokenInfoView = match dp.mint_metadata(&fingerprint).await {
+        Ok(metadata) => metadata,
+        Err(e) => return Err(RESTError::Custom(e.to_string()).into()),
+    };
     Ok(rweb::Json::from(json!(metadata)))
 }
 
@@ -407,8 +407,7 @@ pub async fn retrieve_active_pools(
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
     let pools = crate::dbsync::get_pools(dp.provider()).await.unwrap();
-    let pools_paged: Vec<Vec<PoolView>> =
-        pools.chunks(100).map(|s| s.into()).collect();
+    let pools_paged: Vec<Vec<PoolView>> = pools.chunks(100).map(|s| s.into()).collect();
     if pools_paged.len() < page {
         return make_error(
             format!("Page {} is the last page", pools_paged.len()),
@@ -501,8 +500,9 @@ pub async fn retrieve_staked_amount(
 
     dbg!(epoch.clone());
     dbg!(stake_addr.clone());
-    
-    let staked_amount = dp.retrieve_staked_amount(epoch, &stake_addr)
+
+    let staked_amount = dp
+        .retrieve_staked_amount(epoch, &stake_addr)
         .await
         .map_err(|_| RESTError::Custom("Couldn't find staked amount".to_string()))?;
     dbg!(staked_amount.clone());
@@ -516,7 +516,7 @@ pub async fn retrieve_staked_amount(
     tags("Generated Rewards"),
     summary = "Retrieve the amount of Ada that the given address is rewarded with for their stake"
 )]
-pub async fn retrieve_generated_rewards (
+pub async fn retrieve_generated_rewards(
     stake_addr: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {

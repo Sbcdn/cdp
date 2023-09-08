@@ -1,6 +1,8 @@
 use std::str::from_utf8;
 
+
 use crate::models::{AssetHandle, PoolView};
+use crate::dbsync::get_stake_address_utxos_dep;
 use crate::server::error::RESTError;
 use crate::server::filter::with_auth;
 use crate::server::handler::make_error;
@@ -220,13 +222,17 @@ pub(crate) async fn get_asset_for_addresses(
                         let amt = assets.get(&asset).unwrap();
                         let fingerprint =
                             make_fingerprint(&policy.to_hex(), &hex::encode(asset.name())).unwrap();
-                        let metadata = dp.mint_metadata(&fingerprint).await.unwrap();
+                        // Deactivated Metadata Requests for performance
+                        //let metadata = dp.mint_metadata(&fingerprint).await.unwrap();
                         handles.push(AssetHandle {
                             fingerprint: Some(fingerprint),
                             policy: Some(policy.to_hex()),
-                            tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                            tokenname: Some(match from_utf8(&asset.name()) {
+                                Ok(s) => s.to_owned(),
+                                Err(_) => hex::encode(&asset.name()),
+                            }),
                             amount: from_bignum(&amt),
-                            metadata: metadata.json,
+                            metadata: None, //metadata.json,
                         })
                     }
                 }
@@ -237,14 +243,9 @@ pub(crate) async fn get_asset_for_addresses(
     let mut handles_summed = Vec::<AssetHandle>::new();
 
     for h in &handles {
-        if handles_summed
-            .iter()
-            .filter(|n| h.same_asset(n))
-            .collect::<Vec<&AssetHandle>>()
-            .is_empty()
-        {
+        if !handles_summed.contains(h) {
             let sum = handles.iter().fold(AssetHandle::new_empty(), |mut acc, f| {
-                if h.same_asset(f) {
+                if h == f {
                     acc.amount = acc.amount.checked_add(f.amount).unwrap();
 
                     if acc.metadata.is_none() && f.metadata.is_some() {
@@ -304,11 +305,12 @@ pub async fn handle_asset_for_stake_address(
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
-
-    let utxos = match dp
-        .wallet_utxos(&reward_address.to_bech32(None).unwrap())
-        .await
-    {
+    // dp
+    //.wallet_utxos(&reward_address.to_bech32(None).unwrap())
+    let utxos = match get_stake_address_utxos_dep(
+        dp.provider(),
+        &reward_address.to_bech32(None).unwrap(),
+    ) {
         Ok(u) => u,
         Err(e) => {
             return make_error(
@@ -348,7 +350,10 @@ pub async fn handle_asset_for_stake_address(
                         handles.push(AssetHandle {
                             fingerprint: Some(fingerprint),
                             policy: Some(policy.to_hex()),
-                            tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                            tokenname: Some(match from_utf8(&asset.name()) {
+                                Ok(s) => s.to_owned(),
+                                Err(_) => hex::encode(&asset.name()),
+                            }),
                             amount: from_bignum(&amt),
                             metadata: None, //metadata.json,
                         })
@@ -361,14 +366,9 @@ pub async fn handle_asset_for_stake_address(
     let mut handles_summed = Vec::<AssetHandle>::new();
 
     for h in &handles {
-        if handles_summed
-            .iter()
-            .filter(|n| h.same_asset(n))
-            .collect::<Vec<&AssetHandle>>()
-            .is_empty()
-        {
+        if !handles_summed.contains(h) {
             let sum = handles.iter().fold(AssetHandle::new_empty(), |mut acc, f| {
-                if h.same_asset(f) {
+                if h == f {
                     acc.amount = acc.amount.checked_add(f.amount).unwrap();
 
                     if acc.metadata.is_none() && f.metadata.is_some() {

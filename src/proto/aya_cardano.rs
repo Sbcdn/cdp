@@ -12,7 +12,7 @@ pub struct ValidatorRequest {
     #[prost(enumeration = "ValidatorRequestType", tag = "1")]
     pub r#type: i32,
     #[prost(string, tag = "2")]
-    pub ennft_fingerprint: ::prost::alloc::string::String,
+    pub txhash: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -25,7 +25,7 @@ pub struct StakeRequest {
 pub struct EventResponse {
     #[prost(enumeration = "EventResponseType", tag = "1")]
     pub message_type: i32,
-    #[prost(oneof = "event_response::Message", tags = "2, 3, 99")]
+    #[prost(oneof = "event_response::Message", tags = "2, 3, 4, 99")]
     pub message: ::core::option::Option<event_response::Message>,
 }
 /// Nested message and enum types in `EventResponse`.
@@ -37,6 +37,8 @@ pub mod event_response {
         EpochChange(super::EpochChangeResponse),
         #[prost(message, tag = "3")]
         CurrentEpoch(super::CurrentEpochResponse),
+        #[prost(message, tag = "4")]
+        ValidatorRegistration(super::ValidatorRegistrationResponse),
         #[prost(string, tag = "99")]
         String(::prost::alloc::string::String),
     }
@@ -66,6 +68,42 @@ pub struct EpochChangeResponse {
 pub struct CurrentEpochResponse {
     #[prost(int32, tag = "1")]
     pub current_epoch_number: i32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegistrationDatum {
+    #[prost(string, tag = "1")]
+    pub operator_address: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub consensus_pub_key: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub merkle_tree_root: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub cce_address: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub en_nft_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub en_owner: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ValidatorRegistrationResponse {
+    #[prost(string, tag = "1")]
+    pub tx_hash: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "2")]
+    pub slot: u64,
+    #[prost(string, tag = "3")]
+    pub operator_address: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub consensus_pub_key: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub merkle_tree_root: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub cce_address: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub en_nft_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub en_owner: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

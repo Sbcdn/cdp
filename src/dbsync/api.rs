@@ -675,8 +675,6 @@ pub fn mint_metadata(
     dbs: &DBSyncProvider,
     fingerprint_in: &str,
 ) -> Result<TokenInfoView, DataProviderDBSyncError> {
-    let con = &mut dbs.connect().unwrap();
-    println!("Connection worked");
     let metadata = ma_tx_mint::table
         .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_mint::ident)))
         .inner_join(tx_metadata::table.on(tx_metadata::tx_id.eq(ma_tx_mint::tx_id)))
@@ -701,11 +699,9 @@ pub fn mint_metadata(
             Option<serde_json::Value>,
             Vec<u8>,
             Option<i64>,
-        )>(con)
+        )>(&mut dbs.connect()?)
         .ok();
-    println!("Some Metadata {metadata:?}");
     if let Some(m) = metadata {
-        println!("Some Metadata {m:?}");
         let quantity = ma_tx_mint::table
             .inner_join(multi_asset::table.on(ma_tx_mint::ident.eq(multi_asset::id)))
             .filter(multi_asset::fingerprint.eq(m.0.clone()))
@@ -728,7 +724,6 @@ pub fn mint_metadata(
             mint_slot: m.6,
         })
     } else {
-        println!("Else");
         let metadata = ma_tx_mint::table
             .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_mint::ident)))
             .inner_join(tx::table.on(ma_tx_mint::tx_id.eq(tx::id)))
@@ -744,7 +739,6 @@ pub fn mint_metadata(
             ))
             .first::<(String, Vec<u8>, Vec<u8>, Vec<u8>, Option<i64>)>(&mut dbs.connect()?)
             .ok();
-        println!("Metadata {metadata:?}");
         if let Some(m) = metadata {
             let quantity = ma_tx_mint::table
                 .inner_join(multi_asset::table.on(ma_tx_mint::ident.eq(multi_asset::id)))
@@ -1773,7 +1767,6 @@ pub async fn epoch_change(
             Vec<u8>,
             Option<Vec<u8>>,
         )>(&mut dbs.connect()?)?;
-    println!("out: {out:?}");
     let out: Vec<(
         i64,
         String,

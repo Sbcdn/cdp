@@ -26,6 +26,7 @@ message EpochRequest {
     int32 epoch = 2;
 };
 
+
 enum ValidatorRequestType { 
     AVStatus = 0;
     AVStake = 1;
@@ -35,14 +36,13 @@ enum ValidatorRequestType {
 
 message ValidatorRequest {
     ValidatorRequestType type = 1;
-    string ennft_fingerprint = 2;
+    string txhash = 2;
 };
 
 enum StakeRequestType {
     DelegatorStakeRequest = 0;
     ValidatorStakeRequest = 1; 
-;
-}
+};
 
 message StakeRequest {
     StakeRequestType type = 1;
@@ -63,6 +63,7 @@ message EventResponse {
     oneof message {
         EpochChangeResponse epoch_change = 2;
         CurrentEpochResponse current_epoch = 3;
+        ValidatorRegistrationResponse validator_registration = 4;
         string string = 99;
     };
 };
@@ -80,6 +81,26 @@ message EpochChangeResponse {
 
 message CurrentEpochResponse {
     int32 current_epoch_number = 1;
+}
+
+message RegistrationDatum {
+    string operator_address = 1;
+    string consensus_pub_key = 2;
+    string merkle_tree_root = 3;
+    string cce_address = 4;
+    string en_nft_name = 5;
+    string en_owner = 6;
+}
+
+message ValidatorRegistrationResponse {
+    string tx_hash = 1;
+    uint64 slot = 2;
+    string operator_address = 3;
+    string consensus_pub_key = 4;
+    string merkle_tree_root = 5;
+    string cce_address = 6;
+    string en_nft_name = 7;
+    string en_owner = 8;
 }
 
 enum StateResponseType {

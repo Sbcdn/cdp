@@ -1,5 +1,7 @@
 use tonic::{transport::Server, Request, Response, Status};
 
+use crate::dbsync::{epoch_change, get_tx_slot};
+use crate::provider::CardanoDataProvider;
 use aya_cardano::chain_follower_request_service_server::{
     ChainFollowerRequestService, ChainFollowerRequestServiceServer,
 };
@@ -8,10 +10,8 @@ use aya_cardano::{
     EpochRequest, EpochRequestType, EventResponse, EventResponseType, StakeRequest,
     StakeRequestType, StateResponse, StateResponseType, ValidatorRequest, ValidatorRequestType,
 };
-
-use crate::dbsync::epoch_change;
-use crate::provider::CardanoDataProvider;
-
+use cardano_serialization_lib::crypto::Ed25519KeyHash;
+use cardano_serialization_lib::AssetName;
 pub mod aya_cardano {
     include!("../proto/aya_cardano.rs");
     //tonic::include_proto!("aya_cardano"); // The string specified here must match the proto package name
@@ -126,10 +126,42 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         request: Request<ValidatorRequest>,
     ) -> Result<Response<EventResponse>, Status> {
         println!("Got a request: {request:?}");
+        let vr = request.into_inner();
+        let datums = find_registration_event(&vr.txhash).await;
+
+        for d in datums {
+            println!("Datum: {d:?}");
+            if let Ok(datum) = restore_wmreg_datum(&d.bytes) {
+                let reg_datum: aya_cardano::RegistrationDatum = datum.into_inner();
+                println!("Registration Datum: {:?}", reg_datum);
+                let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+                    db_path: std::env::var("DBSYNC_URL").unwrap(),
+                }));
+                let reply = EventResponse {
+                    message_type: EventResponseType::ValidatorRegistrationEvent.into(),
+                    message: Some(Message::ValidatorRegistration(
+                        aya_cardano::ValidatorRegistrationResponse {
+                            tx_hash: vr.txhash.clone(),
+                            slot: get_tx_slot(dp.provider(), &vr.txhash).unwrap() as u64,
+                            operator_address: reg_datum.operator_address,
+                            consensus_pub_key: reg_datum.consensus_pub_key,
+                            merkle_tree_root: reg_datum.merkle_tree_root,
+                            cce_address: reg_datum.cce_address,
+                            en_nft_name: reg_datum.en_nft_name,
+                            en_owner: reg_datum.en_owner,
+                        },
+                    )),
+                };
+
+                return Ok(Response::new(reply)); // Send back our formatted greeting
+            }
+        }
 
         let reply = EventResponse {
             message_type: EventResponseType::ValidatorRegistrationEvent.into(),
-            message: Some(Message::String("ValidatorRegistrationEvent".to_string())),
+            message: Some(Message::String(
+                "Could not find registration transaction".to_string(),
+            )),
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
@@ -140,10 +172,38 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         request: Request<ValidatorRequest>,
     ) -> Result<Response<EventResponse>, Status> {
         println!("Got a request: {request:?}");
+        let vr = request.into_inner();
+        let datums = find_registration_event(&vr.txhash).await;
+        for d in datums {
+            if let Ok(datum) = restore_wmreg_datum(&d.bytes) {
+                let reg_datum: aya_cardano::RegistrationDatum = datum.into_inner();
+                let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+                    db_path: std::env::var("DBSYNC_URL").unwrap(),
+                }));
+                let reply = EventResponse {
+                    message_type: EventResponseType::ValidatorUnregistrationEvent.into(),
+                    message: Some(Message::ValidatorRegistration(
+                        aya_cardano::ValidatorRegistrationResponse {
+                            tx_hash: vr.txhash.clone(),
+                            slot: get_tx_slot(dp.provider(), &vr.txhash).unwrap() as u64,
+                            operator_address: reg_datum.operator_address,
+                            consensus_pub_key: reg_datum.consensus_pub_key,
+                            merkle_tree_root: reg_datum.merkle_tree_root,
+                            cce_address: reg_datum.cce_address,
+                            en_nft_name: reg_datum.en_nft_name,
+                            en_owner: reg_datum.en_owner,
+                        },
+                    )),
+                };
 
+                return Ok(Response::new(reply)); // Send back our formatted greeting
+            }
+        }
         let reply = EventResponse {
             message_type: EventResponseType::ValidatorUnregistrationEvent.into(),
-            message: Some(Message::String("ValidatorUnregistrationEvent".to_string())),
+            message: Some(Message::String(
+                "Could not find unregistration transaction".to_string(),
+            )),
         };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
@@ -216,4 +276,108 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
 
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
+}
+
+fn restore_wmreg_datum(bytes: &[u8]) -> Result<Response<aya_cardano::RegistrationDatum>, Status> {
+    let datum = cardano_serialization_lib::plutus::PlutusData::from_bytes(bytes.to_vec())
+        .expect("Could not deserialize PlutusData");
+    log::debug!("Restored PlutusData: {:?}", datum);
+    let d_str = datum
+        .to_json(cardano_serialization_lib::plutus::PlutusDatumSchema::DetailedSchema)
+        .expect("Could not transform PlutusData to JSON");
+    log::debug!("Restored PlutusData Str: {:?}", d_str);
+    let d_svalue = serde_json::from_str::<serde_json::Value>(&d_str)
+        .expect("Could not transform PlutusDataJson to serde_json::Value");
+    log::debug!("Deserialized Datum: \n{:?}", &d_str);
+    let fields = d_svalue.get("fields").unwrap().as_array().unwrap();
+
+    let operator_address = hex::decode(
+        fields[0]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+
+    let consensus_pub_key = hex::decode(
+        fields[1]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+
+    let merkle_tree_root = hex::decode(
+        fields[2]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+
+    let cce_address = hex::decode(
+        fields[3]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+
+    let en_nft_name = AssetName::new(
+        hex::decode(
+            fields[4]
+                .as_object()
+                .unwrap()
+                .get("bytes")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let en_owner = Ed25519KeyHash::from_bytes(
+        hex::decode(
+            fields[5]
+                .as_object()
+                .unwrap()
+                .get("bytes")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    Ok(Response::new(aya_cardano::RegistrationDatum {
+        operator_address: std::str::from_utf8(&operator_address).unwrap().to_owned(),
+        consensus_pub_key: std::str::from_utf8(&consensus_pub_key).unwrap().to_owned(),
+        merkle_tree_root: std::str::from_utf8(&merkle_tree_root).unwrap().to_owned(),
+        cce_address: std::str::from_utf8(&cce_address).unwrap().to_owned(),
+        en_nft_name: std::str::from_utf8(&en_nft_name.name()).unwrap().to_owned(),
+        en_owner: hex::encode(en_owner.to_bytes()),
+    }))
+}
+
+async fn find_registration_event(txhash: &str) -> Vec<crate::models::CDPDatum> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").unwrap(),
+    }));
+    dp.find_datums_for_tx(&hex::decode(txhash).unwrap())
+        .await
+        .unwrap()
 }

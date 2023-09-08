@@ -379,6 +379,21 @@ pub fn slot(dbs: &DBSyncProvider) -> Result<i64, DataProviderDBSyncError> {
     }
 }
 
+pub fn get_tx_slot(dbs: &DBSyncProvider, txhash: &str) -> Result<i64, DataProviderDBSyncError> {
+    let slot = block::table
+        .inner_join(tx::table.on(tx::block_id.eq(block::id)))
+        .filter(tx::hash.eq(hex::decode(&txhash)?))
+        .select(block::slot_no)
+        .first::<Option<i64>>(&mut dbs.connect()?)?;
+    if let Some(s) = slot {
+        Ok(s)
+    } else {
+        Err(DataProviderDBSyncError::Custom(format!(
+            "ERROR: Could not find slot number in DBsync for txhash {txhash:?}"
+        )))
+    }
+}
+
 pub fn stakers_on_pool(
     dbs: &DBSyncProvider,
     pool: &str,

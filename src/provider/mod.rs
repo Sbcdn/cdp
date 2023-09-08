@@ -1,15 +1,17 @@
 pub mod config;
 pub mod error;
-use crate::models::CDPDatum;
+use crate::models::{CDPDatum, TxHistoryListView
+};
 
 use super::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
 };
 use async_trait::async_trait;
 use cardano_serialization_lib::address::Address;
 use dcslc::TransactionUnspentOutputs;
 use error::DataProviderError;
+use bigdecimal::BigDecimal;
 
 #[async_trait]
 pub trait CardanoDataProvider {
@@ -119,7 +121,19 @@ pub trait CardanoDataProvider {
         &self,
         addresses: &Vec<&str>,
         slot: Option<u64>,
-    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError>;
+    ) -> Result<Vec<TxHistoryListView>, DataProviderError>;
+
+    async fn retrieve_staked_amount (
+        &self,
+        epoch: i32,
+        stake_addr: &str,
+    ) -> Result<BigDecimal, DataProviderError>;
+
+    async fn retrieve_generated_rewards (
+        &self,
+        stake_addr: &str,
+    ) -> Result<Vec<RewardView>, DataProviderError>;
+
 }
 
 pub struct DataProvider<T: CardanoDataProvider> {
@@ -307,7 +321,22 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         &self,
         addresses: &Vec<&str>,
         slot: Option<u64>,
-    ) -> Result<Vec<crate::models::TxHistoryListView>, DataProviderError> {
+    ) -> Result<Vec<TxHistoryListView>, DataProviderError> {
         self.provider().tx_history(addresses, slot).await
+    }
+
+    async fn retrieve_staked_amount (
+        &self,
+        epoch: i32,
+        stake_addr: &str,
+    ) -> Result<BigDecimal, DataProviderError> {
+        dbg!(self.provider().retrieve_staked_amount(epoch, stake_addr).await)
+    }
+
+    async fn retrieve_generated_rewards (
+        &self,
+        stake_addr: &str,
+    ) -> Result<Vec<RewardView>, DataProviderError> {
+        dbg!(self.provider().retrieve_generated_rewards(stake_addr).await)
     }
 }

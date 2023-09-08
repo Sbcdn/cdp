@@ -309,3 +309,10 @@ pub struct PoolView {
     pub ticker: String,
     pub json: serde_json::Value,
 }
+
+#[derive(Queryable, Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RewardView {
+    pub amount: u64,
+    pub earned_epoch: i64,
+    pub spendable_epoch: i64, 
+}

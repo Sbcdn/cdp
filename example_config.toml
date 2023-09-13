@@ -1,30 +1,11 @@
-[PROVIDER]
-# DBSYNC | BLOCKFROST | KOIOS | CARB
-use = ["DBSYNC", "BLOCKFROST"]
-# SINGLE | REDUNDANT | MULTI | MULTIRED 
-mode = "REDUNDANT"
-# master provider
-master = ["DBSYNC"]
-# backup provider
-slave = ["BLOCKFROST"]
+[appconfigs]
+None = {}
 
-[DBSYNC]
-# ip
-dbhost = ""
-# database port default 5432
-dbport = 5432
-# database user
-dbuser = "user"
-# database name
-database = "cexplorer"
-# ENV | FILE
-pw_mode = "ENV"
-# name of the password environment variable
-pw_env = "DBSYNC_PW"
-
-[BLOCKFROST]
-api_key = ""
-url = ""
-
-[ENV]
-DBSYNC_PW = "my_password"
+[connectivity]
+dbsync_url = "postgres://user:password@localhost:5432/testnet"
+submit_endpoint_1 = "http://localhost:8090/api/submit/tx"
+submit_endpoint_2 = ""
+submit_endpoint_3 = ""
+protocoal_parameter_path = "/protocol_parameters_preview.json"
+cert_private_key = ""
+cert_pub_key = ""

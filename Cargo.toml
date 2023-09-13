@@ -31,7 +31,7 @@ reqwest = { version = "0.11", default-features = false, features = [
 ] }
 http = "0.2.6"
 toml = "0.5.9"
-
+base64 = "0.21.4"
 diesel = { version = "2.0.0", features = [
     "postgres",
     "numeric",

@@ -84,6 +84,8 @@ pub struct RegistrationDatum {
     pub en_nft_name: ::prost::alloc::string::String,
     #[prost(string, tag = "6")]
     pub en_owner: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub signature: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -104,6 +106,8 @@ pub struct ValidatorRegistrationResponse {
     pub en_nft_name: ::prost::alloc::string::String,
     #[prost(string, tag = "8")]
     pub en_owner: ::prost::alloc::string::String,
+    #[prost(string, tag = "9")]
+    pub signature: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

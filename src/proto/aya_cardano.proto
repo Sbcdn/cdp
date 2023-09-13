@@ -90,6 +90,7 @@ message RegistrationDatum {
     string cce_address = 4;
     string en_nft_name = 5;
     string en_owner = 6;
+    string signature = 7;
 }
 
 message ValidatorRegistrationResponse {
@@ -101,6 +102,7 @@ message ValidatorRegistrationResponse {
     string cce_address = 6;
     string en_nft_name = 7;
     string en_owner = 8;
+    string signature = 9;
 }
 
 enum StateResponseType {

@@ -16,7 +16,11 @@ pub mod aya_cardano {
     include!("../proto/aya_cardano.rs");
     //tonic::include_proto!("aya_cardano"); // The string specified here must match the proto package name
 }
-
+use base64::{
+    alphabet,
+    engine::{self, general_purpose},
+    Engine as _,
+};
 #[derive(Debug, Default)]
 pub struct AyaCardanoRPCServer {}
 
@@ -149,6 +153,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                             cce_address: reg_datum.cce_address,
                             en_nft_name: reg_datum.en_nft_name,
                             en_owner: reg_datum.en_owner,
+                            signature: reg_datum.signature,
                         },
                     )),
                 };
@@ -192,6 +197,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                             cce_address: reg_datum.cce_address,
                             en_nft_name: reg_datum.en_nft_name,
                             en_owner: reg_datum.en_owner,
+                            signature: reg_datum.signature,
                         },
                     )),
                 };
@@ -363,6 +369,17 @@ fn restore_wmreg_datum(bytes: &[u8]) -> Result<Response<aya_cardano::Registratio
     )
     .unwrap();
 
+    let enSignature = hex::decode(
+        fields[6]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+
     Ok(Response::new(aya_cardano::RegistrationDatum {
         operator_address: std::str::from_utf8(&operator_address).unwrap().to_owned(),
         consensus_pub_key: std::str::from_utf8(&consensus_pub_key).unwrap().to_owned(),
@@ -370,6 +387,7 @@ fn restore_wmreg_datum(bytes: &[u8]) -> Result<Response<aya_cardano::Registratio
         cce_address: std::str::from_utf8(&cce_address).unwrap().to_owned(),
         en_nft_name: std::str::from_utf8(&en_nft_name.name()).unwrap().to_owned(),
         en_owner: hex::encode(en_owner.to_bytes()),
+        signature: general_purpose::STANDARD.encode(enSignature),
     }))
 }
 

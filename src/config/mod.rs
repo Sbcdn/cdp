@@ -181,9 +181,6 @@ impl ConfigRoot {
     pub fn new(explicit_file: &Option<std::path::PathBuf>) -> Result<Self, config::ConfigError> {
         let mut s = config::Config::builder();
 
-        // our base config will always be in /etc/scrolls
-        s = s.add_source(config::File::with_name("/usr/bin/config.toml").required(false));
-
         // but we can override it by having a file in the working dir
         s = s.add_source(config::File::with_name("config.toml").required(false));
 
@@ -207,7 +204,7 @@ impl ConfigRoot {
         std::env::set_var("TX_SUBMIT_ENDPOINT1", &self.connectivity.submit_endpoint_1);
         std::env::set_var("TX_SUBMIT_ENDPOINT2", &self.connectivity.submit_endpoint_2);
         std::env::set_var("TX_SUBMIT_ENDPOINT3", &self.connectivity.submit_endpoint_3);
-        std::env::set_var("PPPATH", self.connectivity.protocoal_parameter_path.clone());
+        std::env::set_var("PPPATH", self.connectivity.protocol_parameter_path.clone());
         std::env::set_var("JWT_PUB_KEY", self.connectivity.cert_pub_key.clone());
     }
 }
@@ -220,7 +217,7 @@ mod connectivity {
         pub submit_endpoint_1: String,
         pub submit_endpoint_2: String,
         pub submit_endpoint_3: String,
-        pub protocoal_parameter_path: String,
+        pub protocol_parameter_path: String,
         pub cert_private_key: Option<String>,
         pub cert_pub_key: String,
     }

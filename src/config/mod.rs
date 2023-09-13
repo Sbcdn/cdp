@@ -200,7 +200,8 @@ impl ConfigRoot {
 
     pub fn set_as_env(&self) {
         match self.appconfigs.clone() {
-            appconfigs::Config::EarthNode(x) => std::env::set_var("ENNFT_POLICY", x.ennft_policy),
+            appconfigs::Config::Nft(x) => std::env::set_var("ENNFT_POLICY", x.policy_id),
+            appconfigs::Config::None => {}
         }
         std::env::set_var("DBSYNC_URL", &self.connectivity.dbsync_url);
         std::env::set_var("TX_SUBMIT_ENDPOINT1", &self.connectivity.submit_endpoint_1);
@@ -226,18 +227,19 @@ mod connectivity {
 }
 
 mod appconfigs {
-    use super::earthnode;
+    use super::nft;
     use serde::Deserialize;
     #[derive(Deserialize, Clone)]
     pub enum Config {
-        EarthNode(earthnode::Config),
+        None,
+        Nft(nft::Config),
     }
 }
 
-mod earthnode {
+mod nft {
     use serde::Deserialize;
     #[derive(Deserialize, Clone)]
     pub struct Config {
-        pub ennft_policy: String,
+        pub policy_id: String,
     }
 }

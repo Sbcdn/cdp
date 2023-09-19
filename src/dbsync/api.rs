@@ -23,10 +23,8 @@ pub fn get_utxo_tokens(
     let multi_assets = multi_asset::table
         .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .inner_join(tx_out::table.on(tx_out::id.eq(ma_tx_out::tx_out_id)))
-        .inner_join(utxo_view::table.on(utxo_view::id.eq(tx_out::id)))
-        .filter(utxo_view::tx_id.eq(tx_id))
-        .filter(utxo_view::index.eq(tx_index))
-        //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
+        .filter(tx_out::tx_id.eq(tx_id))
+        .filter(tx_out::index.eq(tx_index))
         .select((
             multi_asset::id,
             multi_asset::policy,
@@ -1991,5 +1989,27 @@ mod tests {
         assert_eq!(func_value.json, real_value.json);
         assert_eq!(func_value.mint_slot, real_value.mint_slot);
         assert_eq!(func_value.txhash, real_value.txhash);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn get_utxo_tokens_CMW_81() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+
+        let utxo_tokens = super::get_utxo_tokens(
+            dp.provider(), 
+            3312750, 
+            0
+        ).unwrap();
+        assert_eq!(utxo_tokens.len(), 1);
+
+        let utxo_tokens = super::get_utxo_tokens(
+            dp.provider(), 
+            3312750, 
+            1
+        ).unwrap();
+        assert_eq!(utxo_tokens.len(), 12);
     }
 }

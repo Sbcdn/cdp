@@ -2029,11 +2029,11 @@ mod tests {
             0
         ).unwrap();
 
-        // can't test policy and name due to non-UTF8 characters in DB explorer
-        assert_eq!(utxo_tokens.len(), 1);
         assert_eq!(utxo_tokens[0].id, 125105);
         assert_eq!(utxo_tokens[0].fingerprint, "asset1vyhv522fs7tg4kyky042empuaeg0e5v9aur0w0");
         assert_eq!(utxo_tokens[0].quantity, BigDecimal::from(3));
+        assert_eq!(hex::encode(utxo_tokens[0].policy.clone()), "4b9ae3978af62cf98dcc3b9aecc3dbbd2f59fa06b55e1f443e3c7c81");
+        assert_eq!(hex::encode(utxo_tokens[0].name.clone()), "ce036a77053b02d10fecc454368896325fd2ac7f5966bb9a35fe794b7bbf850f");
 
 
         println!("utxo_tokens[0]: {:?}", utxo_tokens[0]);
@@ -2044,44 +2044,77 @@ mod tests {
             1
         ).unwrap();
 
-        // can't test policy and name due to non-UTF8 characters in DB explorer
-        assert_eq!(utxo_tokens.len(), 12);
         assert_eq!(utxo_tokens[0].id, 86452);
         assert_eq!(utxo_tokens[0].fingerprint, "asset1gquup8evek9psft57ka29atuv9t4ekujfeulay");
         assert_eq!(utxo_tokens[0].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[0].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[0].name.clone()), "079389604744f143190973559b08cc12ce044f51c56527ddb05a8d648a265f76");
+
         assert_eq!(utxo_tokens[1].id, 86839);
         assert_eq!(utxo_tokens[1].fingerprint, "asset14hltlww3q8alhqznyz0t5rnz3wrpgg8762lsxk");
         assert_eq!(utxo_tokens[1].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[1].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[1].name.clone()), "466f56e732c05a5b6c0a4b72059ca0b34dfc8b2686fe870abc65ea8c28389265");
+
         assert_eq!(utxo_tokens[2].id, 86784);
         assert_eq!(utxo_tokens[2].fingerprint, "asset1xh75cc98vzh5s7hw37gzgxuaj67ark2p52lwgv");
         assert_eq!(utxo_tokens[2].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[2].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[2].name.clone()), "52b31a059b63ce58cc129aa14979458190b45c93c0213341799d0b97d8ad69be");
+
         assert_eq!(utxo_tokens[3].id, 90128);
         assert_eq!(utxo_tokens[3].fingerprint, "asset189z77fxt2h758mgth5rc6m2tavsj0s6kepwxf9");
         assert_eq!(utxo_tokens[3].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[3].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[3].name.clone()), "5be074649f3657223e4d1d06eb18dc6df603459efb94c6893f8613975dbf5b8c");
+
         assert_eq!(utxo_tokens[4].id, 86813);
         assert_eq!(utxo_tokens[4].fingerprint, "asset13nmc52yg556gpu4u53stk8fc5qfhvvyadrd78r");
         assert_eq!(utxo_tokens[4].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[4].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[4].name.clone()), "6a11a2299502c640830dce1a830f4a20b3f1451edd46606d7219e7d9765caa06");
+
         assert_eq!(utxo_tokens[5].id, 86365);
         assert_eq!(utxo_tokens[5].fingerprint, "asset10n9gjx0h40un2tl5wpx5dr4h0zg8yqkdc7u468");
         assert_eq!(utxo_tokens[5].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[5].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[5].name.clone()), "6c541e3e0ff73ca23a543d372e7455989c29a2df8b55496890e3f00418f64a97");
+
         assert_eq!(utxo_tokens[6].id, 86923);
         assert_eq!(utxo_tokens[6].fingerprint, "asset1lg82x7zq3c3fy7w29crkwmnfuv2hj03p2ygmc6");
         assert_eq!(utxo_tokens[6].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[6].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[6].name.clone()), "966a2d0a8a6b14e67455f9cb3e4ac59cfa6c75b570ead071b1cf1a1472a549c4");
+
         assert_eq!(utxo_tokens[7].id, 86963);
         assert_eq!(utxo_tokens[7].fingerprint, "asset16x02ett6wtfjkf4ayz2zfjgec2m6pyr6r6xrmr");
         assert_eq!(utxo_tokens[7].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[7].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[7].name.clone()), "a2b7d3bd6c650fe388b67841d321d39bdcfcb42a7be15163d033f28a742ca9d6");
+
         assert_eq!(utxo_tokens[8].id, 100979);
         assert_eq!(utxo_tokens[8].fingerprint, "asset14e7yfrgurya54e9k83axv3hw3s0kxluz289juu");
         assert_eq!(utxo_tokens[8].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[8].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[8].name.clone()), "d8ae43a1a2a0ab24709fb6fc497963dc30d8b1ee941fb774f1c8f05f98e6e556");
+
         assert_eq!(utxo_tokens[9].id, 88257);
         assert_eq!(utxo_tokens[9].fingerprint, "asset1g5ekxpjwnxu43qaejp3ml8hdfqa38ug7w4z6pw");
         assert_eq!(utxo_tokens[9].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[9].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[9].name.clone()), "e52c1140e73aaf9c96cfb6a5f8a40de63cf9c75f9f25ae8a9359df39e037566e");
+
         assert_eq!(utxo_tokens[10].id, 86920);
         assert_eq!(utxo_tokens[10].fingerprint, "asset13a25l8trzvf3g2pa4lfpmzdtas6wyrn07rjr9q");
         assert_eq!(utxo_tokens[10].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[10].policy.clone()), "8819741bc9cb6299093bea6a6d306fb5faaf3aa4102ae43b8381837d");
+        assert_eq!(hex::encode(utxo_tokens[10].name.clone()), "f32ba079cfbc64e8119354e93f3ce804922b5499d4e8265e50bc4cf0f65fd490");
+
         assert_eq!(utxo_tokens[11].id, 6425);
         assert_eq!(utxo_tokens[11].fingerprint, "asset1qpcwhg7cvg7wr4m5xa3vd2s79lutkf044pmg4z");
         assert_eq!(utxo_tokens[11].quantity, BigDecimal::from(199217790));
+        assert_eq!(hex::encode(utxo_tokens[11].policy.clone()), "fdc6402cf6c5a22e389ebb3f813af09f3502377885c2046e98ce2c88");
+        assert_eq!(hex::encode(utxo_tokens[11].name.clone()), "69555344");
     }
 
     #[tokio::test]
@@ -2097,6 +2130,7 @@ mod tests {
             0
         ).unwrap();
 
+        // verify that the multiassets don't display (key distinguishing feature of get_utxo_tokens from get_stxo_tokens)
         assert_eq!(utxo_tokens.len(), 0);
 
         let utxo_tokens = super::get_utxo_tokens(
@@ -2105,6 +2139,7 @@ mod tests {
             0
         ).unwrap();
 
+        // verify that the multiassets don't display (key distinguishing feature of get_utxo_tokens from get_stxo_tokens)
         assert_eq!(utxo_tokens.len(), 0);
     }
 }

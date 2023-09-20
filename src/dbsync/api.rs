@@ -15,7 +15,7 @@ use log::debug;
 use std::str::FromStr;
 /// get all tokens of an utxo
 
-pub fn get_utxo_tokens_for_utxo_view(
+pub fn get_utxo_tokens(
     dbs: &DBSyncProvider,
     tx_id: i64,
     tx_index: i16,
@@ -38,7 +38,8 @@ pub fn get_utxo_tokens_for_utxo_view(
     Ok(multi_assets)
 }
 
-pub fn get_utxo_tokens_for_txout(
+// stxo = spent transaction output (as opposed to utxo, which is unspent)
+pub fn get_stxo_tokens(
     dbs: &DBSyncProvider,
     tx_id: i64,
     tx_index: i16,
@@ -2014,14 +2015,15 @@ mod tests {
         assert_eq!(func_value.txhash, real_value.txhash);
     }
 
+    // stxo = spent transaction output (as opposed to utxo, which is unspent)
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn get_utxo_tokens_for_txout_CMW_81() {
+    async fn get_stxo_tokens_CMW_81() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
             db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
 
-        let utxo_tokens = super::get_utxo_tokens_for_txout(
+        let utxo_tokens = super::get_stxo_tokens(
             dp.provider(), 
             3312750, 
             0
@@ -2036,7 +2038,7 @@ mod tests {
 
         println!("utxo_tokens[0]: {:?}", utxo_tokens[0]);
 
-        let utxo_tokens = super::get_utxo_tokens_for_txout(
+        let utxo_tokens = super::get_stxo_tokens(
             dp.provider(), 
             3312750, 
             1
@@ -2084,12 +2086,12 @@ mod tests {
 
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn get_utxo_tokens_for_utxo_view_CMW_81() {
+    async fn get_utxo_tokens_CMW_81() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
             db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
 
-        let utxo_tokens = super::get_utxo_tokens_for_utxo_view(
+        let utxo_tokens = super::get_utxo_tokens(
             dp.provider(), 
             3312750, 
             0
@@ -2097,7 +2099,7 @@ mod tests {
 
         assert_eq!(utxo_tokens.len(), 0);
 
-        let utxo_tokens = super::get_utxo_tokens_for_utxo_view(
+        let utxo_tokens = super::get_utxo_tokens(
             dp.provider(), 
             3312750, 
             0

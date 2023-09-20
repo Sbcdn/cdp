@@ -62,7 +62,7 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
         Ok(api::get_address_utxos(self, addr)?)
     }
 
-    async fn asset_utxos_on_addr( // unused
+    async fn asset_utxos_on_addr(
         &self,
         addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
@@ -107,13 +107,13 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
         Ok(utxo)
     }
 
-    async fn utxo_tokens( // unused trait method
+    async fn utxo_tokens(
         &self,
         utxo_id: i64,
         index: i16,
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>
     {
-        Ok(api::get_utxo_tokens_for_utxo_view(self, utxo_id, index)?)
+        Ok(api::get_utxo_tokens(self, utxo_id, index)?)
     }
 
     async fn find_datums_for_tx(

@@ -20,7 +20,7 @@ pub fn get_utxo_tokens(
     tx_id: i64,
     tx_index: i16,
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderDBSyncError> {
-    let multi_assets = multi_asset::table
+    Ok(multi_asset::table
         .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .inner_join(tx_out::table.on(tx_out::id.eq(ma_tx_out::tx_out_id)))
         .inner_join(utxo_view::table.on(utxo_view::id.eq(tx_out::id)))
@@ -34,8 +34,8 @@ pub fn get_utxo_tokens(
             multi_asset::fingerprint,
             ma_tx_out::quantity,
         ))
-        .load::<CardanoNativeAssetView>(&mut dbs.connect()?)?;
-    Ok(multi_assets)
+        .load::<CardanoNativeAssetView>(&mut dbs.connect()?)?
+    )
 }
 
 #[deprecated(since = "0.1.1")]
@@ -43,7 +43,7 @@ pub fn get_utxo_tokens_dep(
     dbs: &DBSyncProvider,
     utxo_id: i64,
 ) -> Result<Vec<CardanoNativeAssetView>, DataProviderDBSyncError> {
-    let multi_assets = multi_asset::table
+    Ok(multi_asset::table
         .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .inner_join(tx_out::table.on(tx_out::id.eq(ma_tx_out::tx_out_id)))
         .inner_join(unspent_utxos::table.on(unspent_utxos::tx_id.eq(tx_out::tx_id)))
@@ -56,15 +56,15 @@ pub fn get_utxo_tokens_dep(
             multi_asset::fingerprint,
             ma_tx_out::quantity,
         ))
-        .load::<CardanoNativeAssetView>(&mut dbs.connect()?)?;
-    Ok(multi_assets)
+        .load::<CardanoNativeAssetView>(&mut dbs.connect()?)?
+    )
 }
 
 pub fn select_addr_of_first_transaction(
     dbs: &DBSyncProvider,
     stake_address_in: &str,
 ) -> Result<String, DataProviderDBSyncError> {
-    let resp = tx_out::table
+    Ok(tx_out::table
         .left_join(tx::table.on(tx_out::tx_id.eq(tx::id)))
         .left_join(block::table.on(tx::block_id.eq(block::id)))
         .left_join(
@@ -73,9 +73,8 @@ pub fn select_addr_of_first_transaction(
         .filter(stake_address::view.eq(stake_address_in))
         .select(tx_out::address)
         .order(block::slot_no.asc())
-        .first::<String>(&mut dbs.connect()?);
-    let resp = resp?;
-    Ok(resp)
+        .first::<String>(&mut dbs.connect()?)?
+    )
 }
 
 /// get all utxos of an address
@@ -99,11 +98,11 @@ pub fn utxo_by_dataumhash(
     addr: &str,
     datumhash: &Vec<u8>,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
-    let unspent = utxo_view::table
+    utxo_view::table
         .filter(utxo_view::address.eq(addr))
         .filter(utxo_view::data_hash.eq(datumhash))
-        .first::<UtxoView>(&mut dbs.connect()?)?;
-    unspent.to_txuo(dbs)
+        .first::<UtxoView>(&mut dbs.connect()?)?
+        .to_txuo(dbs)
 }
 
 /// get utxos by hash and index
@@ -112,7 +111,7 @@ pub fn utxo_by_txid(
     txhash: &Vec<u8>,
     index: i16,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
-    let unspent = utxo_view::table
+    utxo_view::table
         .inner_join(tx::table.on(tx::id.eq(utxo_view::tx_id)))
         .filter(tx::hash.eq(txhash))
         .filter(utxo_view::index.eq(index))
@@ -130,8 +129,7 @@ pub fn utxo_by_txid(
             utxo_view::inline_datum_id,
             utxo_view::reference_script_id,
         ))
-        .first::<UtxoView>(&mut dbs.connect()?)?;
-    unspent.to_txuo(dbs)
+        .first::<UtxoView>(&mut dbs.connect()?)?.to_txuo(dbs)
 }
 
 /// get utxos by hash and index
@@ -140,7 +138,7 @@ fn utxo_by_txid_db(
     txid: i64,
     index: i16,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
-    let unspent = utxo_view::table
+    utxo_view::table
         .filter(utxo_view::id.eq(txid))
         .filter(utxo_view::index.eq(index))
         .select((
@@ -157,8 +155,8 @@ fn utxo_by_txid_db(
             utxo_view::inline_datum_id,
             utxo_view::reference_script_id,
         ))
-        .first::<UtxoView>(&mut dbs.connect()?)?;
-    unspent.to_txuo(dbs)
+        .first::<UtxoView>(&mut dbs.connect()?)?
+        .to_txuo(dbs)
 }
 
 /// get all utxos of an address
@@ -166,6 +164,7 @@ pub fn get_stake_address_utxos(
     dbs: &DBSyncProvider,
     saddr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     let unspent = utxo_view::table
         .left_join(
             stake_address::table.on(utxo_view::stake_address_id.eq(stake_address::id.nullable())),
@@ -186,7 +185,6 @@ pub fn get_stake_address_utxos(
             utxo_view::reference_script_id,
         ))
         .load::<UtxoView>(&mut dbs.connect()?)?;
-    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     for u in unspent {
         utxos.add(&u.to_txuo(dbs)?);
     }
@@ -197,7 +195,8 @@ pub fn asset_utxos_on_addr(
     dbs: &DBSyncProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
-    let unspent_assets: Vec<UtxoView> = utxo_view::table
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
+    utxo_view::table
         .inner_join(ma_tx_out::table.on(ma_tx_out::tx_out_id.eq(utxo_view::tx_id)))
         .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .filter(utxo_view::address.eq(addr))
@@ -215,15 +214,13 @@ pub fn asset_utxos_on_addr(
             utxo_view::inline_datum_id,
             utxo_view::reference_script_id,
         ))
-        .load::<UtxoView>(&mut dbs.connect()?)?;
-
-    let mut utxos = dcslc::TransactionUnspentOutputs::new();
-    unspent_assets.iter().for_each(|n| {
-        utxos.add(
-            &n.to_txuo(dbs)
-                .expect("Could not convert into TransactionUnspentOutput"),
-        )
-    });
+        .load::<UtxoView>(&mut dbs.connect()?)?
+        .iter().for_each(|n| {
+            utxos.add(
+                &n.to_txuo(dbs)
+                    .expect("Could not convert into TransactionUnspentOutput"),
+            )
+        });
 
     Ok(utxos)
 }
@@ -234,10 +231,10 @@ pub fn get_address_utxos_dep(
     dbs: &DBSyncProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::address.eq(addr))
         .load::<UnspentUtxo>(&mut dbs.connect()?)?;
-    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     for u in unspent {
         utxos.add(&u.to_txuo(dbs)?);
     }
@@ -250,11 +247,11 @@ pub fn get_stake_address_utxos_dep(
     dbs: &DBSyncProvider,
     stake_addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::stake_address.eq(stake_addr))
         .filter(unspent_utxos::address_has_script.eq(false))
         .load::<UnspentUtxo>(&mut dbs.connect()?)?;
-    let mut utxos = dcslc::TransactionUnspentOutputs::new();
     for u in unspent {
         utxos.add(&u.to_txuo(dbs)?);
     }
@@ -268,7 +265,8 @@ pub fn asset_utxos_on_addr_dep(
     dbs: &DBSyncProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderDBSyncError> {
-    let unspent_assets: Vec<UnspentUtxo> = unspent_utxos::table
+    let mut utxos = dcslc::TransactionUnspentOutputs::new();
+    unspent_utxos::table
         .inner_join(ma_tx_out::table.on(ma_tx_out::tx_out_id.eq(unspent_utxos::id)))
         .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .select((
@@ -283,10 +281,8 @@ pub fn asset_utxos_on_addr_dep(
             unspent_utxos::stake_address,
         ))
         .filter(unspent_utxos::address.eq(addr))
-        .load::<UnspentUtxo>(&mut dbs.connect()?)?;
-
-    let mut utxos = dcslc::TransactionUnspentOutputs::new();
-    unspent_assets.iter().for_each(|n| {
+        .load::<UnspentUtxo>(&mut dbs.connect()?)?
+        .iter().for_each(|n| {
         utxos.add(
             &n.to_txuo(dbs)
                 .expect("Could not convert into TransactionUnspentOutput"),
@@ -301,7 +297,7 @@ pub fn find_datums_for_tx(
     dbs: &DBSyncProvider,
     txid: &Vec<u8>,
 ) -> Result<Vec<CDPDatum>, DataProviderDBSyncError> {
-    let mut datums = datum::table
+    let datums = datum::table
         .inner_join(
             tx_out::table.on(tx_out::data_hash
                 .eq(datum::hash.nullable())
@@ -344,7 +340,7 @@ pub fn find_datums_for_tx(
         ))
         .first::<(Option<Vec<u8>>, Option<i64>)>(&mut dbs.connect()?)?;
 
-    datums = datum::table
+    Ok(datum::table
         .inner_join(
             tx_out::table.on(tx_out::data_hash
                 .eq(datum::hash.nullable())
@@ -361,9 +357,8 @@ pub fn find_datums_for_tx(
             tx_out::address,
             tx_out::address_has_script,
         ))
-        .load::<CDPDatum>(&mut dbs.connect()?);
-
-    Ok(datums?)
+        .load::<CDPDatum>(&mut dbs.connect()?)?
+    )
 }
 
 pub fn slot(dbs: &DBSyncProvider) -> Result<i64, DataProviderDBSyncError> {
@@ -401,14 +396,14 @@ pub fn stakers_on_pool(
     pool: &str,
     epoch: i32,
 ) -> Result<Vec<StakeDelegationView>, DataProviderDBSyncError> {
-    let pool_stake = epoch_stake::table
+    Ok(epoch_stake::table
         .inner_join(pool_hash::table.on(pool_hash::id.eq(epoch_stake::pool_id)))
         .inner_join(stake_address::table.on(epoch_stake::addr_id.eq(stake_address::id)))
         .filter(pool_hash::view.eq(pool))
         .filter(epoch_stake::epoch_no.eq(epoch))
         .select((stake_address::view, epoch_stake::amount))
-        .load::<StakeDelegationView>(&mut dbs.connect()?)?;
-    Ok(pool_stake)
+        .load::<StakeDelegationView>(&mut dbs.connect()?)?
+    )
 }
 
 pub fn deligations_per_pool_for_epochs(
@@ -417,7 +412,7 @@ pub fn deligations_per_pool_for_epochs(
     start_epoch: i64,
     end_epoch: i64,
 ) -> Result<Vec<DelegationView>, DataProviderDBSyncError> {
-    let deleg = delegation::table
+    Ok(delegation::table
         .inner_join(pool_hash::table.on(pool_hash::id.eq(delegation::pool_hash_id)))
         .inner_join(stake_address::table.on(delegation::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(delegation::tx_id.eq(tx::id)))
@@ -430,8 +425,8 @@ pub fn deligations_per_pool_for_epochs(
             delegation::cert_index,
             delegation::active_epoch_no,
         ))
-        .load::<DelegationView>(&mut dbs.connect()?)?;
-    Ok(deleg)
+        .load::<DelegationView>(&mut dbs.connect()?)?
+    )
 }
 
 pub fn pool_total_stake(
@@ -446,19 +441,16 @@ pub fn pool_total_stake(
         .select(epoch_stake::amount)
         .load::<BigDecimal>(&mut dbs.connect()?)?;
 
-    let tot_stake: u64 = pool_stake.iter().map(|x| x.to_u64().unwrap()).sum();
-
-    Ok(tot_stake)
+    Ok(pool_stake.iter().map(|x| x.to_u64().unwrap()).sum())
 }
 
 pub fn current_epoch(dbs: &DBSyncProvider) -> Result<i32, DataProviderDBSyncError> {
-    let epoch = epoch_stake::table
+    Ok(epoch_stake::table
         .filter(epoch_stake::epoch_no.is_not_null())
         .select(epoch_stake::epoch_no)
         .order(epoch_stake::epoch_no.desc())
-        .first::<i32>(&mut dbs.connect()?)?;
-
-    Ok(epoch)
+        .first::<i32>(&mut dbs.connect()?)?
+    )
 }
 
 pub fn fingerprint(
@@ -466,13 +458,12 @@ pub fn fingerprint(
     policy: &str,
     tokenname: &str,
 ) -> Result<String, DataProviderDBSyncError> {
-    let fingerprint = multi_asset::table
+    Ok(multi_asset::table
         .filter(multi_asset::policy.eq(hex::decode(policy)?))
         .filter(multi_asset::name.eq(tokenname.as_bytes()))
         .select(multi_asset::fingerprint)
-        .first::<String>(&mut dbs.connect()?)?;
-
-    Ok(fingerprint)
+        .first::<String>(&mut dbs.connect()?)?
+    )
 }
 
 pub fn token_info(
@@ -484,21 +475,16 @@ pub fn token_info(
         .select((multi_asset::policy, multi_asset::name))
         .first::<(Vec<u8>, Vec<u8>)>(&mut dbs.connect()?)?;
 
-    let policy = hex::encode(fingerprint.0);
-    let tokenname = hex::encode(fingerprint.1);
-
-    let ti = TokenInfoView {
-        policy,
-        tokenname,
+    Ok(TokenInfoView {
+        policy: hex::encode(fingerprint.0),
+        tokenname: hex::encode(fingerprint.1),
         fingerprint: fingerprint_in.to_owned(),
         quantity: None,
         meta_key: None,
         json: None,
         mint_slot: None,
         txhash: None,
-    };
-
-    Ok(ti)
+    })
 }
 
 #[allow(clippy::type_complexity)]
@@ -506,6 +492,7 @@ pub fn stake_registration(
     dbs: &DBSyncProvider,
     stake_addr_in: &str,
 ) -> Result<Vec<StakeRegistrationView>, DataProviderDBSyncError> {
+    let mut out = Vec::<StakeRegistrationView>::new();
     let registration = stake_registration::table
         .inner_join(stake_address::table.on(stake_registration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_registration::tx_id.eq(tx::id)))
@@ -517,17 +504,16 @@ pub fn stake_registration(
             stake_registration::epoch_no,
         ))
         .order(stake_registration::epoch_no.desc())
-        .load::<(String, Vec<u8>, i32, i32)>(&mut dbs.connect()?)?;
-
-    let mut out = Vec::<StakeRegistrationView>::new();
-    for d in registration {
-        out.push(StakeRegistrationView {
-            stake_address: d.0,
-            tx_hash: d.1,
-            cert_index: d.2,
-            epoch: d.3,
-        });
-    }
+        .load::<(String, Vec<u8>, i32, i32)>(&mut dbs.connect()?)?
+        .iter()
+        .for_each(|d|
+            out.push(StakeRegistrationView {
+                stake_address: d.0.clone(),
+                tx_hash: d.1.clone(),
+                cert_index: d.2,
+                epoch: d.3,
+            })
+        );
 
     Ok(out)
 }
@@ -537,6 +523,7 @@ pub fn stake_deregistration(
     dbs: &DBSyncProvider,
     stake_addr_in: &str,
 ) -> Result<Vec<StakeDeregistrationView>, DataProviderDBSyncError> {
+    let mut out = Vec::<StakeDeregistrationView>::new();
     let deregistration = stake_deregistration::table
         .inner_join(stake_address::table.on(stake_deregistration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_deregistration::tx_id.eq(tx::id)))
@@ -549,16 +536,17 @@ pub fn stake_deregistration(
             stake_deregistration::redeemer_id,
         ))
         .order(stake_deregistration::epoch_no.desc())
-        .load::<(String, Vec<u8>, i32, i32, Option<i64>)>(&mut dbs.connect()?)?;
-    let mut out = Vec::<StakeDeregistrationView>::new();
-    for d in deregistration {
-        out.push(StakeDeregistrationView {
-            stake_address: d.0,
-            tx_hash: d.1,
-            cert_index: d.2,
-            epoch: d.3,
-        });
-    }
+        .load::<(String, Vec<u8>, i32, i32, Option<i64>)>(&mut dbs.connect()?)?
+        .iter()
+        .for_each(|d|
+            out.push(StakeDeregistrationView {
+                stake_address: d.0.clone(),
+                tx_hash: d.1.clone(),
+                cert_index: d.2,
+                epoch: d.3,
+            })
+        );
+
     Ok(out)
 }
 
@@ -838,11 +826,8 @@ pub fn txhash_spent(dbs: &DBSyncProvider, txhash: &str) -> Result<bool, DataProv
         .filter(tx_in::tx_in_id.is_not_null())
         .filter(tx::hash.eq(txh_b))
         .load::<(Vec<u8>, i16)>(&mut dbs.connect()?)?;
-    if !tx.is_empty() {
-        Ok(true)
-    } else {
-        Ok(false)
-    }
+
+    Ok(!tx.is_empty())
 }
 
 pub async fn token_supply(
@@ -925,6 +910,7 @@ pub fn addresses_exist(
     }
     Ok(out)
 }
+
 // ToDo: Slot limitation to query just before a certain slot
 fn _tx_history_q(
     dbs: &DBSyncProvider,
@@ -1008,7 +994,7 @@ pub async fn txo_by_id_index(
     id: i64,
     index: i16,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
-    let txo = tx_out::table
+    tx_out::table
         .filter(tx_out::id.eq(id))
         .filter(tx_out::index.eq(index))
         .select((
@@ -1025,9 +1011,8 @@ pub async fn txo_by_id_index(
             tx_out::inline_datum_id,
             tx_out::reference_script_id,
         ))
-        .first::<crate::dbsync::models::TxOut>(&mut dbs.connect()?)?;
-    debug!("calling to_txo for: {:?}", txo);
-    txo.to_txuo(dbs)
+        .first::<crate::dbsync::models::TxOut>(&mut dbs.connect()?)?
+        .to_txuo(dbs)
 }
 
 pub async fn collateral_txo_by_id_index(
@@ -1035,7 +1020,7 @@ pub async fn collateral_txo_by_id_index(
     id: i64,
     index: i16,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderDBSyncError> {
-    let txo = collateral_tx_out::table
+    collateral_tx_out::table
         .filter(collateral_tx_out::id.eq(id))
         .filter(collateral_tx_out::index.eq(index))
         .select((
@@ -1052,22 +1037,20 @@ pub async fn collateral_txo_by_id_index(
             collateral_tx_out::inline_datum_id,
             collateral_tx_out::reference_script_id,
         ))
-        .first::<crate::dbsync::models::TxOut>(&mut dbs.connect()?)?;
-    txo.to_txuo(dbs)
+        .first::<crate::dbsync::models::TxOut>(&mut dbs.connect()?)?
+        .to_txuo(dbs)
 }
 
 pub async fn get_tx_inputs(
     dbs: &DBSyncProvider,
     hash: &str,
 ) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
-    debug!("get_tx_inputs");
+    let mut temp = Vec::<(i64, i16)>::new();
     let input_references: Vec<_> = tx::table
         .inner_join(tx_in::table.on(tx_in::tx_in_id.eq(tx::id)))
         .filter(tx::hash.eq(hex::decode(hash)?))
         .select((tx_in::tx_out_id, tx_in::tx_out_index))
         .load::<(i64, i16)>(&mut dbs.connect()?)?;
-    let mut temp = Vec::<(i64, i16)>::new();
-    debug!("enrich_tx_inputs");
     for i in input_references.into_iter() {
         let tx_out = tx_out::table
             .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
@@ -1140,6 +1123,7 @@ pub async fn get_withdrawls(
     dbs: &DBSyncProvider,
     hash: &str,
 ) -> Result<Vec<WithdrawalView>, DataProviderDBSyncError> {
+    let mut out = Vec::<WithdrawalView>::new();
     let withdrawals: Option<Vec<_>> = withdrawal::table
         .inner_join(tx::table.on(withdrawal::tx_id.eq(tx::id)))
         .inner_join(stake_address::table.on(withdrawal::addr_id.eq(stake_address::id)))
@@ -1147,8 +1131,6 @@ pub async fn get_withdrawls(
         .select((withdrawal::amount, stake_address::view))
         .load::<(BigDecimal, String)>(&mut dbs.connect()?)
         .ok();
-
-    let mut out = Vec::<WithdrawalView>::new();
     if let Some(withdrawals) = withdrawals {
         for w in withdrawals {
             out.push(WithdrawalView {
@@ -1165,6 +1147,7 @@ pub async fn tx_stake_registration(
     dbs: &DBSyncProvider,
     hash: &str,
 ) -> Result<Vec<StakeRegistrationView>, DataProviderDBSyncError> {
+    let mut out = Vec::<StakeRegistrationView>::new();
     let stake_registration: Option<Vec<(String, i32, i32)>> = tx::table
         .inner_join(stake_registration::table.on(stake_registration::tx_id.eq(tx::id)))
         .inner_join(stake_address::table.on(stake_registration::addr_id.eq(stake_address::id)))
@@ -1176,8 +1159,7 @@ pub async fn tx_stake_registration(
         ))
         .load::<(String, i32, i32)>(&mut dbs.connect()?)
         .ok();
-
-    let mut out = Vec::<StakeRegistrationView>::new();
+    
     if let Some(stake_registration) = stake_registration {
         for s in stake_registration.into_iter() {
             out.push(StakeRegistrationView {
@@ -1196,6 +1178,7 @@ pub async fn tx_stake_deregistration(
     dbs: &DBSyncProvider,
     hash: &str,
 ) -> Result<Vec<StakeDeregistrationView>, DataProviderDBSyncError> {
+    let mut out = Vec::<StakeDeregistrationView>::new();
     let stake_deregistration: Option<Vec<(String, i32, i32)>> = tx::table
         .inner_join(stake_deregistration::table.on(stake_deregistration::tx_id.eq(tx::id)))
         .inner_join(stake_address::table.on(stake_deregistration::addr_id.eq(stake_address::id)))
@@ -1207,8 +1190,6 @@ pub async fn tx_stake_deregistration(
         ))
         .load::<(String, i32, i32)>(&mut dbs.connect()?)
         .ok();
-
-    let mut out = Vec::<StakeDeregistrationView>::new();
     if let Some(stake_deregistration) = stake_deregistration {
         for s in stake_deregistration.into_iter() {
             out.push(StakeDeregistrationView {
@@ -1227,6 +1208,7 @@ pub async fn tx_script(
     dbs: &DBSyncProvider,
     hash: &str,
 ) -> Result<Vec<ScriptView>, DataProviderDBSyncError> {
+    let mut out = Vec::<ScriptView>::new();
     let script: Option<
         Vec<(
             Vec<u8>,
@@ -1245,7 +1227,6 @@ pub async fn tx_script(
         ))
         .load(&mut dbs.connect()?)
         .ok();
-    let mut out = Vec::<ScriptView>::new();
     if let Some(script) = script {
         for s in script.into_iter() {
             let bytes = s.3.map(hex::encode);
@@ -1301,14 +1282,13 @@ pub async fn tx_collateral_out(
     dbs: &DBSyncProvider,
     hash: &str,
 ) -> Result<TransactionUnspentOutputs, DataProviderDBSyncError> {
+    let mut txout = TransactionUnspentOutputs::new();
     let output_references: Option<Vec<_>> = collateral_tx_out::table
         .inner_join(tx::table.on(collateral_tx_out::tx_id.eq(tx::id)))
         .filter(tx::hash.eq(hex::decode(hash)?))
         .select((collateral_tx_out::id, collateral_tx_out::index))
         .load::<(i64, i16)>(&mut dbs.connect()?)
         .ok();
-
-    let mut txout = TransactionUnspentOutputs::new();
     if let Some(output_references) = output_references {
         for o in output_references.into_iter() {
             let txo = collateral_txo_by_id_index(dbs, o.0, o.1).await?;
@@ -1330,7 +1310,8 @@ pub fn retrieve_staked_amount(
         .select(epoch_stake::amount)
         .first::<BigDecimal>(&mut dbs.connect()?)
         .ok()
-        .unwrap())
+        .unwrap()
+    )
 }
 
 pub fn retrieve_generated_rewards(
@@ -1354,7 +1335,8 @@ pub fn retrieve_generated_rewards(
             earned_epoch: t.1,
             spendable_epoch: t.2,
         })
-        .collect::<Vec<RewardView>>())
+        .collect::<Vec<RewardView>>()
+    )
 }
 
 // R parameter in reward projection
@@ -1365,7 +1347,8 @@ pub fn total_available_rewards(
     Ok(ada_pots::table
         .filter(ada_pots::epoch_no.eq(current_epoch))
         .select(ada_pots::rewards)
-        .first::<BigDecimal>(&mut dbs.connect()?)?)
+        .first::<BigDecimal>(&mut dbs.connect()?)?
+    )
 }
 
 // a0 parameter in reward projection
@@ -1492,12 +1475,13 @@ pub fn calculate_pool_rewards_next_epoch(
     p: RewardProjectionParameters,
 ) -> Result<BigDecimal, DataProviderDBSyncError> {
     // reward formula: https://docs.cardano.org/learn/pledging-rewards/
-    let rewards = (p.r / (p.one + p.a0.clone()))
+
+    Ok(
+        (p.r / (p.one + p.a0.clone()))
         * (p.sigma_.clone()
             + (p.s_.clone() * p.a0 / p.z0.clone())
-                * (p.sigma_.clone() - (p.s_ / p.z0.clone()) * (p.z0 - p.sigma_)));
-
-    Ok(rewards)
+                * (p.sigma_.clone() - (p.s_ / p.z0.clone()) * (p.z0 - p.sigma_)))
+    )
 }
 
 pub fn pool_owner_margin(
@@ -1512,9 +1496,8 @@ pub fn pool_owner_margin(
         .select(pool_update::margin)
         .load::<f64>(&mut dbs.connect()?)?;
     margin.reverse();
-    let margin = BigDecimal::from_f64(margin.last().unwrap().clone()).unwrap();
 
-    Ok(margin)
+    Ok(BigDecimal::from_f64(margin.last().unwrap().clone()).unwrap())
 }
 
 pub fn personal_stake(
@@ -1576,7 +1559,8 @@ pub fn earned_reward(
         .filter(stake_address::view.eq(stake_addr.to_string()))
         .filter(reward::earned_epoch.eq(earned_epoch))
         .select(reward::amount)
-        .first::<BigDecimal>(&mut dbs.connect()?)?)
+        .first::<BigDecimal>(&mut dbs.connect()?)?
+    )
 }
 
 pub async fn discover_transaction(
@@ -1697,11 +1681,11 @@ pub async fn epoch_nonce(
     dbs: &DBSyncProvider,
     epoch: i32,
 ) -> Result<(Vec<u8>, Option<Vec<u8>>), DataProviderDBSyncError> {
-    let out = epoch_param::table
+    Ok(epoch_param::table
         .filter(epoch_param::epoch_no.eq(epoch))
         .select((epoch_param::nonce, epoch_param::extra_entropy.nullable()))
-        .first::<(Vec<u8>, Option<Vec<u8>>)>(&mut dbs.connect()?)?;
-    Ok(out)
+        .first::<(Vec<u8>, Option<Vec<u8>>)>(&mut dbs.connect()?)?
+    )
 }
 
 //ToDo:
@@ -1792,7 +1776,7 @@ pub async fn epoch_change(
         })
         .collect();
 
-    let out = EpochChangeResponse {
+    Ok(EpochChangeResponse {
         last_epoch: out[1].5.unwrap() as u64,
         last_blockhash: out[1].1.clone(),
         last_slot: out[1].2.unwrap() as u64,
@@ -1801,9 +1785,7 @@ pub async fn epoch_change(
         new_blockhash: out[0].1.clone(),
         epoch_nonce: out[0].6.clone(),
         extra_entropy: out[0].7.clone(),
-    };
-
-    Ok(out)
+    })
 }
 
 #[cfg(test)]

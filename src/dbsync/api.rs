@@ -15,7 +15,30 @@ use log::debug;
 use std::str::FromStr;
 /// get all tokens of an utxo
 
-pub fn get_utxo_tokens(
+pub fn get_utxo_tokens_for_utxo_view(
+    dbs: &DBSyncProvider,
+    tx_id: i64,
+    tx_index: i16,
+) -> Result<Vec<CardanoNativeAssetView>, DataProviderDBSyncError> {
+    let multi_assets = multi_asset::table
+        .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+        .inner_join(tx_out::table.on(tx_out::id.eq(ma_tx_out::tx_out_id)))
+        .inner_join(utxo_view::table.on(utxo_view::id.eq(tx_out::id)))
+        .filter(utxo_view::tx_id.eq(tx_id))
+        .filter(utxo_view::index.eq(tx_index))
+        //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
+        .select((
+            multi_asset::id,
+            multi_asset::policy,
+            multi_asset::name,
+            multi_asset::fingerprint,
+            ma_tx_out::quantity,
+        ))
+        .load::<CardanoNativeAssetView>(&mut dbs.connect()?)?;
+    Ok(multi_assets)
+}
+
+pub fn get_utxo_tokens_for_txout(
     dbs: &DBSyncProvider,
     tx_id: i64,
     tx_index: i16,
@@ -1993,23 +2016,93 @@ mod tests {
 
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn get_utxo_tokens_CMW_81() {
+    async fn get_utxo_tokens_for_txout_CMW_81() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
             db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
 
-        let utxo_tokens = super::get_utxo_tokens(
+        let utxo_tokens = super::get_utxo_tokens_for_txout(
             dp.provider(), 
             3312750, 
             0
         ).unwrap();
-        assert_eq!(utxo_tokens.len(), 1);
 
-        let utxo_tokens = super::get_utxo_tokens(
+        // can't test policy and name due to non-UTF8 characters in DB explorer
+        assert_eq!(utxo_tokens.len(), 1);
+        assert_eq!(utxo_tokens[0].id, 125105);
+        assert_eq!(utxo_tokens[0].fingerprint, "asset1vyhv522fs7tg4kyky042empuaeg0e5v9aur0w0".to_string());
+        assert_eq!(utxo_tokens[0].quantity, BigDecimal::from(3));
+
+
+        println!("utxo_tokens[0]: {:?}", utxo_tokens[0]);
+
+        let utxo_tokens = super::get_utxo_tokens_for_txout(
             dp.provider(), 
             3312750, 
             1
         ).unwrap();
+
+        // can't test policy and name due to non-UTF8 characters in DB explorer
         assert_eq!(utxo_tokens.len(), 12);
+        assert_eq!(utxo_tokens[0].id, 86452);
+        assert_eq!(utxo_tokens[0].fingerprint, "asset1gquup8evek9psft57ka29atuv9t4ekujfeulay".to_string());
+        assert_eq!(utxo_tokens[0].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[1].id, 86839);
+        assert_eq!(utxo_tokens[1].fingerprint, "asset14hltlww3q8alhqznyz0t5rnz3wrpgg8762lsxk".to_string());
+        assert_eq!(utxo_tokens[1].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[2].id, 86784);
+        assert_eq!(utxo_tokens[2].fingerprint, "asset1xh75cc98vzh5s7hw37gzgxuaj67ark2p52lwgv".to_string());
+        assert_eq!(utxo_tokens[2].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[3].id, 90128);
+        assert_eq!(utxo_tokens[3].fingerprint, "asset189z77fxt2h758mgth5rc6m2tavsj0s6kepwxf9".to_string());
+        assert_eq!(utxo_tokens[3].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[4].id, 86813);
+        assert_eq!(utxo_tokens[4].fingerprint, "asset13nmc52yg556gpu4u53stk8fc5qfhvvyadrd78r".to_string());
+        assert_eq!(utxo_tokens[4].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[5].id, 86365);
+        assert_eq!(utxo_tokens[5].fingerprint, "asset10n9gjx0h40un2tl5wpx5dr4h0zg8yqkdc7u468".to_string());
+        assert_eq!(utxo_tokens[5].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[6].id, 86923);
+        assert_eq!(utxo_tokens[6].fingerprint, "asset1lg82x7zq3c3fy7w29crkwmnfuv2hj03p2ygmc6".to_string());
+        assert_eq!(utxo_tokens[6].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[7].id, 86963);
+        assert_eq!(utxo_tokens[7].fingerprint, "asset16x02ett6wtfjkf4ayz2zfjgec2m6pyr6r6xrmr".to_string());
+        assert_eq!(utxo_tokens[7].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[8].id, 100979);
+        assert_eq!(utxo_tokens[8].fingerprint, "asset14e7yfrgurya54e9k83axv3hw3s0kxluz289juu".to_string());
+        assert_eq!(utxo_tokens[8].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[9].id, 88257);
+        assert_eq!(utxo_tokens[9].fingerprint, "asset1g5ekxpjwnxu43qaejp3ml8hdfqa38ug7w4z6pw".to_string());
+        assert_eq!(utxo_tokens[9].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[10].id, 86920);
+        assert_eq!(utxo_tokens[10].fingerprint, "asset13a25l8trzvf3g2pa4lfpmzdtas6wyrn07rjr9q".to_string());
+        assert_eq!(utxo_tokens[10].quantity, BigDecimal::from(1));
+        assert_eq!(utxo_tokens[11].id, 6425);
+        assert_eq!(utxo_tokens[11].fingerprint, "asset1qpcwhg7cvg7wr4m5xa3vd2s79lutkf044pmg4z".to_string());
+        assert_eq!(utxo_tokens[11].quantity, BigDecimal::from(199217790));
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn get_utxo_tokens_for_utxo_view_CMW_81() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+
+        let utxo_tokens = super::get_utxo_tokens_for_utxo_view(
+            dp.provider(), 
+            3312750, 
+            0
+        ).unwrap();
+
+        assert_eq!(utxo_tokens.len(), 0);
+
+        let utxo_tokens = super::get_utxo_tokens_for_utxo_view(
+            dp.provider(), 
+            3312750, 
+            0
+        ).unwrap();
+
+        assert_eq!(utxo_tokens.len(), 0);
     }
 }

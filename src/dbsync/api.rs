@@ -38,8 +38,7 @@ pub fn get_utxo_tokens(
     Ok(multi_assets)
 }
 
-// stxo = spent transaction output (as opposed to utxo, which is unspent)
-pub fn get_stxo_tokens(
+pub fn get_txo_tokens(
     dbs: &DBSyncProvider,
     tx_id: i64,
     tx_index: i16,
@@ -2015,15 +2014,14 @@ mod tests {
         assert_eq!(func_value.txhash, real_value.txhash);
     }
 
-    // stxo = spent transaction output (as opposed to utxo, which is unspent)
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn get_stxo_tokens_CMW_81() {
+    async fn get_txo_tokens_CMW_81() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
             db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
 
-        let utxo_tokens = super::get_stxo_tokens(
+        let utxo_tokens = super::get_txo_tokens(
             dp.provider(), 
             3312750, 
             0
@@ -2038,7 +2036,7 @@ mod tests {
 
         println!("utxo_tokens[0]: {:?}", utxo_tokens[0]);
 
-        let utxo_tokens = super::get_stxo_tokens(
+        let utxo_tokens = super::get_txo_tokens(
             dp.provider(), 
             3312750, 
             1
@@ -2126,20 +2124,50 @@ mod tests {
 
         let utxo_tokens = super::get_utxo_tokens(
             dp.provider(), 
-            3312750, 
+            3317731, 
             0
         ).unwrap();
 
-        // verify that the multiassets don't display (key distinguishing feature of get_utxo_tokens from get_stxo_tokens)
-        assert_eq!(utxo_tokens.len(), 0);
+        assert_eq!(utxo_tokens[0].id, 25777);
+        assert_eq!(utxo_tokens[0].fingerprint, "asset1jr6nl54y3rvpqfpmpau95q9lvu59fwq4f9xf9a");
+        assert_eq!(utxo_tokens[0].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[0].policy.clone()), "314de5f1c06ca6261a9159bfba61cfba8f4fb3ff37a2d68ec1b54c8a");
+        assert_eq!(hex::encode(utxo_tokens[0].name.clone()), "546573746e65744e4654202337");
+
+        assert_eq!(utxo_tokens[1].id, 391);
+        assert_eq!(utxo_tokens[1].fingerprint, "asset1m099azmatp3f3xehsu4sqvr45jzqafxmm0dra0");
+        assert_eq!(utxo_tokens[1].quantity, BigDecimal::from(150));
+        assert_eq!(hex::encode(utxo_tokens[1].policy.clone()), "3f1d9bd2f8c3d7d8144b789433261370eaf25cdc83fe8a745ef880c1");
+        assert_eq!(hex::encode(utxo_tokens[1].name.clone()), "744452415341");
+
+        assert_eq!(utxo_tokens[2].id, 2746);
+        assert_eq!(utxo_tokens[2].fingerprint, "asset10q8zsrnx5plw0k2l2e8slcjf4htuvu42jxrgl8");
+        assert_eq!(utxo_tokens[2].quantity, BigDecimal::from(50));
+        assert_eq!(hex::encode(utxo_tokens[2].policy.clone()), "dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9");
+        assert_eq!(hex::encode(utxo_tokens[2].name.clone()), "7441726b");
 
         let utxo_tokens = super::get_utxo_tokens(
             dp.provider(), 
-            3312750, 
-            0
+            3317731, 
+            1
         ).unwrap();
 
-        // verify that the multiassets don't display (key distinguishing feature of get_utxo_tokens from get_stxo_tokens)
-        assert_eq!(utxo_tokens.len(), 0);
+        assert_eq!(utxo_tokens[0].id, 367);
+        assert_eq!(utxo_tokens[0].fingerprint, "asset1wn7x62hf07wp36u6nmux467nrsngrcvurwqvm2");
+        assert_eq!(utxo_tokens[0].quantity, BigDecimal::from(1));
+        assert_eq!(hex::encode(utxo_tokens[0].policy.clone()), "55e9a9737f5ee3f3a04a80b5bc9419c87724187318bd7ac376141e10");
+        assert_eq!(hex::encode(utxo_tokens[0].name.clone()), "74656e4e465435");
+
+        assert_eq!(utxo_tokens[1].id, 392);
+        assert_eq!(utxo_tokens[1].fingerprint, "asset1e83uya776dvqjauy270qnj03899hxxant6jp2g");
+        assert_eq!(utxo_tokens[1].quantity, BigDecimal::from(75));
+        assert_eq!(hex::encode(utxo_tokens[1].policy.clone()), "c693a41d2b4f241c992b88c7238131d92202206ffc92f5eae090d0ee");
+        assert_eq!(hex::encode(utxo_tokens[1].name.clone()), "7454657374");
+
+        assert_eq!(utxo_tokens[2].id, 2746);
+        assert_eq!(utxo_tokens[2].fingerprint, "asset10q8zsrnx5plw0k2l2e8slcjf4htuvu42jxrgl8");
+        assert_eq!(utxo_tokens[2].quantity, BigDecimal::from(50));
+        assert_eq!(hex::encode(utxo_tokens[2].policy.clone()), "dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9");
+        assert_eq!(hex::encode(utxo_tokens[2].name.clone()), "7441726b");
     }
 }

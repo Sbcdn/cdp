@@ -12,6 +12,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::sql_types::{Array, BigInt, Float8, Int4, Jsonb, Numeric};
 use diesel_derive_enum::DbEnum;
+use super::api;
 
 #[derive(Debug, Clone, DbEnum, QueryId)]
 #[ExistingTypePath = "crate::dbsync::schema::sql_types::Syncstatetype"]
@@ -102,7 +103,7 @@ impl UnspentUtxo {
             &cardano_serialization_lib::utils::to_bignum(coin),
         );
 
-        let tokens = super::api::get_utxo_tokens_dep(&dbs, self.id)?;
+        let tokens = api::get_utxo_tokens_dep(&dbs, self.id)?;
         let mut ma = cardano_serialization_lib::MultiAsset::new();
         for tok in tokens {
             match ma.get(&cardano_serialization_lib::PolicyID::from_bytes(
@@ -194,7 +195,7 @@ impl UtxoView {
             &cardano_serialization_lib::utils::to_bignum(coin),
         );
 
-        let tokens = super::api::get_utxo_tokens_for_utxo_view(&dbs, self.tx_id, self.index)?;
+        let tokens = api::get_utxo_tokens_for_utxo_view(&dbs, self.tx_id, self.index)?;
         let mut ma = cardano_serialization_lib::MultiAsset::new();
         for tok in tokens {
             match ma.get(&cardano_serialization_lib::PolicyID::from_bytes(
@@ -801,7 +802,7 @@ impl TxOut {
             &cardano_serialization_lib::utils::to_bignum(coin),
         );
         log::debug!("try to create tokens, Ada amount set Value from : {amount:?}");
-        let tokens = super::api::get_utxo_tokens_for_txout(&dbs, self.tx_id, self.index)?;
+        let tokens = api::get_utxo_tokens_for_txout(&dbs, self.tx_id, self.index)?;
         let mut ma = cardano_serialization_lib::MultiAsset::new();
         for tok in tokens {
             match ma.get(&cardano_serialization_lib::PolicyID::from_bytes(

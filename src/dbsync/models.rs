@@ -590,7 +590,7 @@ pub struct PoolUpdate {
     pub cert_index: i32,
     pub vrf_key_hash: Vec<u8>,
     pub pledge: BigDecimal,
-    pub reward_addr: Vec<u8>,
+    pub reward_addr_id: i64,
     pub active_epoch_no: i64,
     pub meta_id: Option<i64>,
     pub margin: f64,

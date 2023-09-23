@@ -397,7 +397,7 @@ table! {
         cert_index -> Int4,
         vrf_key_hash -> Bytea,
         pledge -> Numeric,
-        reward_addr -> Bytea,
+        reward_addr_id -> Int8,
         active_epoch_no -> Int8,
         meta_id -> Nullable<Int8>,
         margin -> Float8,

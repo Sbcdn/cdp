@@ -9,6 +9,7 @@ use crate::models::{
 use crate::provider::error::DataProviderError;
 use blockfrost::{AccountAddress, AddressUtxo};
 use bigdecimal::BigDecimal;
+use serde_json::{json, Value};
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
@@ -255,4 +256,117 @@ pub fn retrieve_generated_rewards (
     stake_addr: &str,
 ) -> Result<Vec<RewardView>, DataProviderError> {
     Ok(vec![])
+}
+
+
+pub fn pool_vrf_key_hash (
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<Vec<u8>, DataProviderError> {
+    Ok(vec![])
+}
+
+pub fn pool_blocks_minted (
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderError> {
+    Ok(0)
+}
+
+pub fn pool_blocks_current_epoch(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderError> {
+    Ok(0)
+}
+
+pub fn pool_declared_pledge(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<BigDecimal, DataProviderError> {
+    Ok(BigDecimal::from(0))
+}
+
+pub fn pool_margin_cost(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<f64, DataProviderError> {
+    Ok(0.0)
+}
+
+pub fn pool_fixed_cost(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<BigDecimal, DataProviderError> {
+    Ok(BigDecimal::from(0))
+}
+
+pub fn pool_reward_address(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderError> {
+    Ok("".to_string())
+}
+
+pub fn pool_owner(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderError> {
+    Ok("".to_string())
+}
+
+pub fn pool_registration(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderError> {
+    Ok(0)
+}
+
+pub fn pool_retirement(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<i32, DataProviderError> {
+    Ok(0)
+}
+
+pub fn pool_url(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderError> {
+    Ok("".to_string())
+}
+
+pub fn pool_ticker(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderError> {
+    Ok("".to_string())
+}
+
+pub fn pool_metadata_json(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<Value, DataProviderError> {
+    Ok(json!({}))
+}
+
+pub fn pool_name(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderError> {
+    Ok("".to_string())
+}
+
+pub fn pool_homepage(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderError> {
+    Ok("".to_string())
+}
+
+pub fn pool_description(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderError> {
+    Ok("".to_string())
 }

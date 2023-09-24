@@ -204,110 +204,110 @@ pub fn pool_vrf_key_hash (
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<Vec<u8>, DataProviderError> {
-    Ok(vec![])
+    todo!()
 }
 
 pub fn pool_blocks_minted (
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<i64, DataProviderError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn pool_blocks_current_epoch(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<i64, DataProviderError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn pool_declared_pledge(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<BigDecimal, DataProviderError> {
-    Ok(BigDecimal::from(0))
+    todo!()
 }
 
 pub fn pool_margin_cost (
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<f64, DataProviderError> {
-    Ok(0.0)
+    todo!()
 }
 
 pub fn pool_fixed_cost(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<BigDecimal, DataProviderError> {
-    Ok(BigDecimal::from(0))
+    todo!()
 }
 
 pub fn pool_reward_address(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_owner(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_registration(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<i64, DataProviderError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn pool_retirement(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<i32, DataProviderError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn pool_url(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_ticker(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_metadata_json(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<Value, DataProviderError> {
-    Ok(json!({}))
+    todo!()
 }
 
 pub fn pool_name(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_homepage(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_description(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
-    Ok("".to_string())
+    todo!()
 }

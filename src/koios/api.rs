@@ -206,110 +206,110 @@ pub fn pool_vrf_key_hash(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<Vec<u8>, DataProviderKoiosError> {
-    Ok(vec![])
+    todo!()
 }
 
 pub fn pool_blocks_minted(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<i64, DataProviderKoiosError> {
-    Ok(0)
+    todo!()
 } 
 
 pub fn pool_blocks_current_epoch(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<i64, DataProviderKoiosError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn pool_declared_pledge(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<BigDecimal, DataProviderKoiosError> {
-    Ok(BigDecimal::from(0))
+    todo!()
 }
 
 pub fn pool_margin_cost(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<f64, DataProviderKoiosError> {
-    Ok(0.0)
+    todo!()
 }
 
 pub fn pool_fixed_cost(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<BigDecimal, DataProviderKoiosError> {
-    Ok(BigDecimal::from(0))
+    todo!()
 }
 
 pub fn pool_reward_address(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_owner(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_registration(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<i64, DataProviderKoiosError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn pool_retirement(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<i32, DataProviderKoiosError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn pool_url(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_ticker(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_metadata_json(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<Value, DataProviderKoiosError> {
-    Ok(json!({}))
+    todo!()
 }
 
 pub fn pool_name(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_homepage(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_string())
+    todo!()
 }
 
 pub fn pool_description(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_string())
+    todo!()
 }

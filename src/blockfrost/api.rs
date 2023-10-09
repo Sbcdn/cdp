@@ -24,7 +24,7 @@ pub fn select_addr_of_first_transaction(
     bfp: &BlockfrostProvider,
     stake_address_in: &str,
 ) -> Result<String, DataProviderBlockfrostError> {
-    Ok("".to_owned())
+    todo!()
 }
 
 /// get all utxos of an address
@@ -33,9 +33,7 @@ pub fn utxo_by_dataumhash(
     addr: &str,
     datumhash: &Vec<u8>,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderBlockfrostError> {
-    Err(DataProviderBlockfrostError::Custom(
-        "not implemented".to_string(),
-    ))
+    todo!()
 }
 
 /// returns Utxo of a certain datumhash on an address
@@ -44,9 +42,7 @@ pub fn utxo_by_txid(
     txhash: &Vec<u8>,
     index: i16,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderBlockfrostError> {
-    Err(DataProviderBlockfrostError::Custom(
-        "not implemented".to_string(),
-    ))
+    todo!()
 }
 
 /// get all utxos of an address
@@ -137,7 +133,7 @@ pub fn pool_delegations(
     todo!();
 }
 
-pub fn deligations_per_pool_for_epochs(
+pub fn delegations_per_pool_for_epochs(
     bfp: &BlockfrostProvider,
     pool: &str,
     start_epoch: i64,
@@ -151,7 +147,7 @@ pub fn pool_total_stake(
     pool: &str,
     epoch: i32,
 ) -> Result<u64, DataProviderBlockfrostError> {
-    Ok(0)
+    todo!()
 }
 
 pub async fn current_epoch(bfp: &BlockfrostProvider) -> Result<i32, DataProviderBlockfrostError> {
@@ -164,7 +160,7 @@ pub fn fingerprint(
     policy: &str,
     tokenname: &str,
 ) -> Result<String, DataProviderBlockfrostError> {
-    Ok("".to_owned())
+    todo!()
 }
 
 pub fn token_info(
@@ -193,7 +189,7 @@ pub fn check_stakeaddr_registered(
     bfp: &BlockfrostProvider,
     stake_addr_in: &str,
 ) -> Result<bool, DataProviderBlockfrostError> {
-    Ok(false)
+    todo!()
 }
 
 pub fn lookup_token_holders(
@@ -215,23 +211,14 @@ pub fn mint_metadata(
     bfp: &BlockfrostProvider,
     fingerprint_in: &str,
 ) -> Result<TokenInfoView, DataProviderBlockfrostError> {
-    Ok(TokenInfoView {
-        fingerprint: "".to_owned(),
-        policy: hex::encode(""),
-        tokenname: "".to_string(),
-        meta_key: None,
-        json: None,
-        txhash: None,
-        quantity: None,
-        mint_slot: None,
-    })
+    todo!()
 }
 
 pub fn pool_valid(
     bfp: &BlockfrostProvider,
     pool_id: &str,
 ) -> Result<bool, DataProviderBlockfrostError> {
-    Ok(true)
+    todo!()
 }
 
 pub fn txhash_spent(
@@ -240,7 +227,7 @@ pub fn txhash_spent(
 ) -> Result<bool, DataProviderBlockfrostError> {
     let txh_b = hex::decode(txhash)?;
 
-    Ok(false)
+    todo!()
 }
 
 pub fn retrieve_staked_amount (
@@ -248,14 +235,14 @@ pub fn retrieve_staked_amount (
     epoch: i32,
     stake_addr: &str,
 ) -> Result<BigDecimal, DataProviderError> {
-    Ok(BigDecimal::from(0))
+    todo!()
 }
 
 pub fn retrieve_generated_rewards (
     bfp: &BlockfrostProvider,
     stake_addr: &str,
 ) -> Result<Vec<RewardView>, DataProviderError> {
-    Ok(vec![])
+    todo!()
 }
 
 

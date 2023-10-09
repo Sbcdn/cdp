@@ -502,7 +502,7 @@ pub mod chain_follower_request_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        pub async fn deligator_stake_event(
+        pub async fn delegator_stake_event(
             &mut self,
             request: impl tonic::IntoRequest<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::EventResponse>, tonic::Status> {
@@ -517,19 +517,19 @@ pub mod chain_follower_request_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/aya_cardano.ChainFollowerRequestService/DeligatorStakeEvent",
+                "/aya_cardano.ChainFollowerRequestService/DelegatorStakeEvent",
             );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new(
                         "aya_cardano.ChainFollowerRequestService",
-                        "DeligatorStakeEvent",
+                        "DelegatorStakeEvent",
                     ),
                 );
             self.inner.unary(req, path, codec).await
         }
-        pub async fn deligator_staked(
+        pub async fn delegator_staked(
             &mut self,
             request: impl tonic::IntoRequest<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::StateResponse>, tonic::Status> {
@@ -544,19 +544,19 @@ pub mod chain_follower_request_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/aya_cardano.ChainFollowerRequestService/DeligatorStaked",
+                "/aya_cardano.ChainFollowerRequestService/DelegatorStaked",
             );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new(
                         "aya_cardano.ChainFollowerRequestService",
-                        "DeligatorStaked",
+                        "DelegatorStaked",
                     ),
                 );
             self.inner.unary(req, path, codec).await
         }
-        pub async fn deligator_unstake_event(
+        pub async fn delegator_unstake_event(
             &mut self,
             request: impl tonic::IntoRequest<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::EventResponse>, tonic::Status> {
@@ -571,19 +571,19 @@ pub mod chain_follower_request_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/aya_cardano.ChainFollowerRequestService/DeligatorUnstakeEvent",
+                "/aya_cardano.ChainFollowerRequestService/DelegatorUnstakeEvent",
             );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new(
                         "aya_cardano.ChainFollowerRequestService",
-                        "DeligatorUnstakeEvent",
+                        "DelegatorUnstakeEvent",
                     ),
                 );
             self.inner.unary(req, path, codec).await
         }
-        pub async fn deligator_unbonding(
+        pub async fn delegator_unbonding(
             &mut self,
             request: impl tonic::IntoRequest<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::StateResponse>, tonic::Status> {
@@ -598,19 +598,19 @@ pub mod chain_follower_request_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/aya_cardano.ChainFollowerRequestService/DeligatorUnbonding",
+                "/aya_cardano.ChainFollowerRequestService/DelegatorUnbonding",
             );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new(
                         "aya_cardano.ChainFollowerRequestService",
-                        "DeligatorUnbonding",
+                        "DelegatorUnbonding",
                     ),
                 );
             self.inner.unary(req, path, codec).await
         }
-        pub async fn deligator_unbonding_event(
+        pub async fn delegator_unbonding_event(
             &mut self,
             request: impl tonic::IntoRequest<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::EventResponse>, tonic::Status> {
@@ -625,14 +625,14 @@ pub mod chain_follower_request_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/aya_cardano.ChainFollowerRequestService/DeligatorUnbondingEvent",
+                "/aya_cardano.ChainFollowerRequestService/DelegatorUnbondingEvent",
             );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new(
                         "aya_cardano.ChainFollowerRequestService",
-                        "DeligatorUnbondingEvent",
+                        "DelegatorUnbondingEvent",
                     ),
                 );
             self.inner.unary(req, path, codec).await
@@ -666,23 +666,23 @@ pub mod chain_follower_request_service_server {
             &self,
             request: tonic::Request<super::ValidatorRequest>,
         ) -> std::result::Result<tonic::Response<super::EventResponse>, tonic::Status>;
-        async fn deligator_stake_event(
+        async fn delegator_stake_event(
             &self,
             request: tonic::Request<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::EventResponse>, tonic::Status>;
-        async fn deligator_staked(
+        async fn delegator_staked(
             &self,
             request: tonic::Request<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::StateResponse>, tonic::Status>;
-        async fn deligator_unstake_event(
+        async fn delegator_unstake_event(
             &self,
             request: tonic::Request<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::EventResponse>, tonic::Status>;
-        async fn deligator_unbonding(
+        async fn delegator_unbonding(
             &self,
             request: tonic::Request<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::StateResponse>, tonic::Status>;
-        async fn deligator_unbonding_event(
+        async fn delegator_unbonding_event(
             &self,
             request: tonic::Request<super::StakeRequest>,
         ) -> std::result::Result<tonic::Response<super::EventResponse>, tonic::Status>;
@@ -1011,15 +1011,15 @@ pub mod chain_follower_request_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/aya_cardano.ChainFollowerRequestService/DeligatorStakeEvent" => {
+                "/aya_cardano.ChainFollowerRequestService/DelegatorStakeEvent" => {
                     #[allow(non_camel_case_types)]
-                    struct DeligatorStakeEventSvc<T: ChainFollowerRequestService>(
+                    struct DelegatorStakeEventSvc<T: ChainFollowerRequestService>(
                         pub Arc<T>,
                     );
                     impl<
                         T: ChainFollowerRequestService,
                     > tonic::server::UnaryService<super::StakeRequest>
-                    for DeligatorStakeEventSvc<T> {
+                    for DelegatorStakeEventSvc<T> {
                         type Response = super::EventResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
@@ -1031,7 +1031,7 @@ pub mod chain_follower_request_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).deligator_stake_event(request).await
+                                (*inner).delegator_stake_event(request).await
                             };
                             Box::pin(fut)
                         }
@@ -1043,7 +1043,7 @@ pub mod chain_follower_request_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DeligatorStakeEventSvc(inner);
+                        let method = DelegatorStakeEventSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1059,15 +1059,15 @@ pub mod chain_follower_request_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/aya_cardano.ChainFollowerRequestService/DeligatorStaked" => {
+                "/aya_cardano.ChainFollowerRequestService/DelegatorStaked" => {
                     #[allow(non_camel_case_types)]
-                    struct DeligatorStakedSvc<T: ChainFollowerRequestService>(
+                    struct DelegatorStakedSvc<T: ChainFollowerRequestService>(
                         pub Arc<T>,
                     );
                     impl<
                         T: ChainFollowerRequestService,
                     > tonic::server::UnaryService<super::StakeRequest>
-                    for DeligatorStakedSvc<T> {
+                    for DelegatorStakedSvc<T> {
                         type Response = super::StateResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
@@ -1079,7 +1079,7 @@ pub mod chain_follower_request_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).deligator_staked(request).await
+                                (*inner).delegator_staked(request).await
                             };
                             Box::pin(fut)
                         }
@@ -1091,7 +1091,7 @@ pub mod chain_follower_request_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DeligatorStakedSvc(inner);
+                        let method = DelegatorStakedSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1107,15 +1107,15 @@ pub mod chain_follower_request_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/aya_cardano.ChainFollowerRequestService/DeligatorUnstakeEvent" => {
+                "/aya_cardano.ChainFollowerRequestService/DelegatorUnstakeEvent" => {
                     #[allow(non_camel_case_types)]
-                    struct DeligatorUnstakeEventSvc<T: ChainFollowerRequestService>(
+                    struct DelegatorUnstakeEventSvc<T: ChainFollowerRequestService>(
                         pub Arc<T>,
                     );
                     impl<
                         T: ChainFollowerRequestService,
                     > tonic::server::UnaryService<super::StakeRequest>
-                    for DeligatorUnstakeEventSvc<T> {
+                    for DelegatorUnstakeEventSvc<T> {
                         type Response = super::EventResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
@@ -1127,7 +1127,7 @@ pub mod chain_follower_request_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).deligator_unstake_event(request).await
+                                (*inner).delegator_unstake_event(request).await
                             };
                             Box::pin(fut)
                         }
@@ -1139,7 +1139,7 @@ pub mod chain_follower_request_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DeligatorUnstakeEventSvc(inner);
+                        let method = DelegatorUnstakeEventSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1155,15 +1155,15 @@ pub mod chain_follower_request_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/aya_cardano.ChainFollowerRequestService/DeligatorUnbonding" => {
+                "/aya_cardano.ChainFollowerRequestService/DelegatorUnbonding" => {
                     #[allow(non_camel_case_types)]
-                    struct DeligatorUnbondingSvc<T: ChainFollowerRequestService>(
+                    struct DelegatorUnbondingSvc<T: ChainFollowerRequestService>(
                         pub Arc<T>,
                     );
                     impl<
                         T: ChainFollowerRequestService,
                     > tonic::server::UnaryService<super::StakeRequest>
-                    for DeligatorUnbondingSvc<T> {
+                    for DelegatorUnbondingSvc<T> {
                         type Response = super::StateResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
@@ -1175,7 +1175,7 @@ pub mod chain_follower_request_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).deligator_unbonding(request).await
+                                (*inner).delegator_unbonding(request).await
                             };
                             Box::pin(fut)
                         }
@@ -1187,7 +1187,7 @@ pub mod chain_follower_request_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DeligatorUnbondingSvc(inner);
+                        let method = DelegatorUnbondingSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1203,15 +1203,15 @@ pub mod chain_follower_request_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/aya_cardano.ChainFollowerRequestService/DeligatorUnbondingEvent" => {
+                "/aya_cardano.ChainFollowerRequestService/DelegatorUnbondingEvent" => {
                     #[allow(non_camel_case_types)]
-                    struct DeligatorUnbondingEventSvc<T: ChainFollowerRequestService>(
+                    struct DelegatorUnbondingEventSvc<T: ChainFollowerRequestService>(
                         pub Arc<T>,
                     );
                     impl<
                         T: ChainFollowerRequestService,
                     > tonic::server::UnaryService<super::StakeRequest>
-                    for DeligatorUnbondingEventSvc<T> {
+                    for DelegatorUnbondingEventSvc<T> {
                         type Response = super::EventResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
@@ -1223,7 +1223,7 @@ pub mod chain_follower_request_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).deligator_unbonding_event(request).await
+                                (*inner).delegator_unbonding_event(request).await
                             };
                             Box::pin(fut)
                         }
@@ -1235,7 +1235,7 @@ pub mod chain_follower_request_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DeligatorUnbondingEventSvc(inner);
+                        let method = DelegatorUnbondingEventSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

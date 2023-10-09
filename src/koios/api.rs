@@ -20,7 +20,7 @@ pub fn select_addr_of_first_transaction(
     bfp: &KoiosProvider,
     stake_address_in: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_owned())
+    todo!()
 }
 
 /// get all utxos of an address
@@ -29,9 +29,7 @@ pub fn get_utxo_by_dataumhash(
     addr: &str,
     datumhash: &Vec<u8>,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderKoiosError> {
-    Err(DataProviderKoiosError::Custom(
-        "not implemented".to_string(),
-    ))
+    todo!()
 }
 
 /// get all utxos of an address
@@ -40,9 +38,7 @@ pub fn utxo_by_txid(
     txhash: &Vec<u8>,
     index: i16,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderKoiosError> {
-    Err(DataProviderKoiosError::Custom(
-        "not implemented".to_string(),
-    ))
+    todo!()
 }
 
 /// get all utxos of an address
@@ -50,7 +46,7 @@ pub fn get_address_utxos(
     bfp: &KoiosProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(dcslc::TransactionUnspentOutputs::new())
+    todo!()
 }
 
 /// Get all utxos of a stake address
@@ -58,7 +54,7 @@ pub fn get_stake_address_utxos(
     bfp: &KoiosProvider,
     stake_addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(dcslc::TransactionUnspentOutputs::new())
+    todo!()
 }
 
 /// Get all utxos of a stake address
@@ -66,7 +62,7 @@ pub fn asset_utxos_on_addr(
     bfp: &KoiosProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderKoiosError> {
-    Ok(dcslc::TransactionUnspentOutputs::new())
+    todo!()
 }
 
 pub fn find_datums_for_tx(
@@ -77,7 +73,7 @@ pub fn find_datums_for_tx(
 }
 
 pub fn slot(bfp: &KoiosProvider) -> Result<i64, DataProviderKoiosError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn stakers_on_pool(
@@ -85,16 +81,16 @@ pub fn stakers_on_pool(
     pool: &str,
     epoch: i32,
 ) -> Result<Vec<StakeDelegationView>, DataProviderKoiosError> {
-    todo!();
+    todo!()
 }
 
-pub fn deligations_per_pool_for_epochs(
+pub fn delegations_per_pool_for_epochs(
     bfp: &KoiosProvider,
     pool: &str,
     start_epoch: i64,
     end_epoch: i64,
 ) -> Result<Vec<DelegationView>, DataProviderKoiosError> {
-    todo!();
+    todo!()
 }
 
 pub fn pool_total_stake(
@@ -102,11 +98,11 @@ pub fn pool_total_stake(
     pool: &str,
     epoch: i32,
 ) -> Result<u64, DataProviderKoiosError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn current_epoch(bfp: &KoiosProvider) -> Result<i32, DataProviderKoiosError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn fingerprint(
@@ -114,7 +110,7 @@ pub fn fingerprint(
     policy: &str,
     tokenname: &str,
 ) -> Result<String, DataProviderKoiosError> {
-    Ok("".to_owned())
+    todo!()
 }
 
 pub fn token_info(
@@ -143,7 +139,7 @@ pub fn check_stakeaddr_registered(
     bfp: &KoiosProvider,
     stake_addr_in: &str,
 ) -> Result<bool, DataProviderKoiosError> {
-    Ok(false)
+    todo!()
 }
 
 pub fn lookup_token_holders(
@@ -165,26 +161,17 @@ pub fn mint_metadata(
     bfp: &KoiosProvider,
     fingerprint_in: &str,
 ) -> Result<TokenInfoView, DataProviderKoiosError> {
-    Ok(TokenInfoView {
-        fingerprint: "".to_owned(),
-        policy: hex::encode(""),
-        tokenname: "".to_owned(),
-        meta_key: None,
-        json: None,
-        txhash: None,
-        quantity: None,
-        mint_slot: None,
-    })
+    todo!()
 }
 
 pub fn pool_valid(bfp: &KoiosProvider, pool_id: &str) -> Result<bool, DataProviderKoiosError> {
-    Ok(true)
+    todo!()
 }
 
 pub fn txhash_spent(bfp: &KoiosProvider, txhash: &str) -> Result<bool, DataProviderKoiosError> {
     let txh_b = hex::decode(txhash)?;
 
-    Ok(false)
+    todo!()
 }
 
 pub fn retrieve_staked_amount (
@@ -192,14 +179,14 @@ pub fn retrieve_staked_amount (
     epoch: i32,
     stake_addr: &str,
 ) -> Result<BigDecimal, DataProviderKoiosError> {
-    Ok(BigDecimal::from(0))
+    todo!()
 }
 
 pub fn retrieve_generated_rewards (
     bfp: &KoiosProvider,
     stake_addr: &str,
 ) -> Result<Vec<RewardView>, DataProviderKoiosError> {
-    Ok(vec![])
+    todo!()
 }
 
 pub fn pool_vrf_key_hash(

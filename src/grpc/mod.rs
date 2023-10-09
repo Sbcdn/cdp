@@ -215,7 +215,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
-    async fn deligator_stake_event(
+    async fn delegator_stake_event(
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<EventResponse>, Status> {
@@ -229,7 +229,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
-    async fn deligator_staked(
+    async fn delegator_staked(
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<StateResponse>, Status> {
@@ -242,7 +242,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
-    async fn deligator_unstake_event(
+    async fn delegator_unstake_event(
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<EventResponse>, Status> {
@@ -256,7 +256,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
-    async fn deligator_unbonding(
+    async fn delegator_unbonding(
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<StateResponse>, Status> {
@@ -269,7 +269,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
-    async fn deligator_unbonding_event(
+    async fn delegator_unbonding_event(
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<EventResponse>, Status> {

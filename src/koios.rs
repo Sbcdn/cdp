@@ -1,78 +1,63 @@
-use crate::provider::error::DataProviderError;
-use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView, 
-    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView
+use crate::models::{CDPDatum, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView,
+    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView, RewardView
 };
+use crate::provider::error::DataProviderError;
 
+use self::error::DataProviderKoiosError;
 use async_trait::async_trait;
-use blockfrost::{load, BlockFrostApi};
-use bigdecimal::BigDecimal;
-use serde_json::Value;
-
 pub mod api;
 pub mod error;
 pub mod models;
+use bigdecimal::BigDecimal;
+use serde_json::Value;
 
 pub struct Config {
     pub url: String,
-    pub api_key: String,
-    pub ipfs_url: Option<String>,
-    pub ipfs_api_key: Option<String>,
+    pub api_token: String,
 }
 
-pub struct BlockfrostProvider {
+pub struct KoiosProvider {
     config: Config,
-    api: BlockFrostApi,
 }
 
-unsafe impl Send for BlockfrostProvider {}
-unsafe impl Sync for BlockfrostProvider {}
-
-impl BlockfrostProvider {
+impl KoiosProvider {
     pub fn new(config: Config) -> Self {
-        let api = BlockfrostProvider::build_api(&config).unwrap();
-        BlockfrostProvider { config, api }
+        KoiosProvider { config }
     }
 
-    fn build_api(config: &Config) -> blockfrost::Result<BlockFrostApi> {
-        let mut configurations = load::configurations_from_env()?;
-
-        configurations["project_id"] = toml::value::Value::from(config.api_key.clone());
-        configurations["blockfrost-network-address"] = toml::value::Value::from(config.url.clone());
-
-        let api = BlockFrostApi::new(
-            configurations["project_id"].as_str().unwrap(),
-            Default::default(),
-        );
-
-        Ok(api)
+    fn connect(&self) -> Result<(), DataProviderKoiosError> {
+        Ok(())
     }
 }
+
+unsafe impl Send for KoiosProvider {}
+unsafe impl Sync for KoiosProvider {}
 
 #[async_trait]
-impl super::provider::CardanoDataProvider for BlockfrostProvider {
+impl super::provider::CardanoDataProvider for KoiosProvider {
     async fn alive(&self) -> bool {
-        self.api.health().await.is_ok()
+        self.connect().is_ok()
     }
 
     async fn wallet_utxos(
         &self,
         stake_addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
-        Ok(api::get_stake_address_utxos(self, stake_addr).await?)
+        Ok(api::get_stake_address_utxos(self, stake_addr)?)
     }
 
     async fn script_utxos(
         &self,
         addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
-        Ok(api::get_address_utxos(self, addr).await?)
+        Ok(api::get_address_utxos(self, addr)?)
     }
 
     async fn asset_utxos_on_addr(
         &self,
         addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
-        Ok(api::asset_utxos_on_addr(self, addr).await?)
+        Ok(api::asset_utxos_on_addr(self, addr)?)
     }
 
     async fn mint_metadata(
@@ -93,12 +78,13 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(dcslc::addr_from_str(&str_addr)?)
     }
 
+    /// get all utxos of an address
     async fn utxo_by_dataumhash(
         &self,
         addr: &str,
         datumhash: &Vec<u8>,
     ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
-        let utxo = api::utxo_by_dataumhash(self, addr, datumhash)?;
+        let utxo = api::get_utxo_by_dataumhash(self, addr, datumhash)?;
         Ok(utxo)
     }
 
@@ -129,7 +115,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     }
 
     async fn slot(&self) -> Result<i64, DataProviderError> {
-        Ok(api::slot(self).await?)
+        Ok(api::slot(self)?)
     }
 
     async fn stakers_on_pool(
@@ -138,16 +124,16 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         epoch: i32,
     ) -> Result<Vec<StakeDelegationView>, DataProviderError>
     {
-        Ok(api::pool_delegations(self, pool, epoch)?)
+        Ok(api::stakers_on_pool(self, pool, epoch)?)
     }
 
-    async fn deligations_per_pool_epoch_intervall(
+    async fn delegations_per_pool_epoch_intervall(
         &self,
         pool: &str,
         start_epoch: i64,
         end_epoch: i64,
     ) -> Result<Vec<DelegationView>, DataProviderError> {
-        Ok(api::deligations_per_pool_for_epochs(
+        Ok(api::delegations_per_pool_for_epochs(
             self,
             pool,
             start_epoch,
@@ -164,7 +150,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     }
 
     async fn current_epoch(&self) -> Result<i32, DataProviderError> {
-        Ok(api::current_epoch(self).await?)
+        Ok(api::current_epoch(self)?)
     }
 
     async fn fingerprint(
@@ -269,14 +255,14 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 
-    async fn pool_vrf_key_hash (
+    async fn pool_vrf_key_hash(
         &self,
         pool_hash: &str,
     ) -> Result<Vec<u8>, DataProviderError> {
         Ok(api::pool_vrf_key_hash(self, pool_hash)?)
     }
 
-    async fn pool_blocks_minted (
+    async fn pool_blocks_minted(
         &self,
         pool_hash: &str,
     ) -> Result<i64, DataProviderError> {
@@ -291,28 +277,28 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     }
 
     async fn pool_declared_pledge(
-        &self,
+        &self, 
         pool_hash: &str,
     ) -> Result<BigDecimal, DataProviderError> {
         Ok(api::pool_declared_pledge(self, pool_hash)?)
     }
 
     async fn pool_margin_cost(
-        &self,
+        &self, 
         pool_hash: &str,
     ) -> Result<f64, DataProviderError> {
         Ok(api::pool_margin_cost(self, pool_hash)?)
     }
 
     async fn pool_fixed_cost(
-        &self,
+        &self, 
         pool_hash: &str,
     ) -> Result<BigDecimal, DataProviderError> {
         Ok(api::pool_fixed_cost(self, pool_hash)?)
     }
 
     async fn pool_reward_address(
-        &self,
+        &self, 
         pool_hash: &str,
     ) -> Result<String, DataProviderError> {
         Ok(api::pool_reward_address(self, pool_hash)?)

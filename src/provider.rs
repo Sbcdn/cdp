@@ -12,6 +12,7 @@ use cardano_serialization_lib::address::Address;
 use dcslc::TransactionUnspentOutputs;
 use error::DataProviderError;
 use bigdecimal::BigDecimal;
+use serde_json::Value;
 
 #[async_trait]
 pub trait CardanoDataProvider {
@@ -134,6 +135,85 @@ pub trait CardanoDataProvider {
         stake_addr: &str,
     ) -> Result<Vec<RewardView>, DataProviderError>;
 
+    async fn pool_vrf_key_hash(
+        &self,
+        pool_hash: &str,
+    ) -> Result<Vec<u8>, DataProviderError>;
+
+    async fn pool_blocks_minted(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError>;
+
+    async fn pool_blocks_current_epoch(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError>;
+
+    async fn pool_declared_pledge(
+        &self,
+        pool_hash: &str,
+    ) -> Result<BigDecimal, DataProviderError>;
+
+    async fn pool_margin_cost(
+        &self,
+        pool_hash: &str,
+    ) -> Result<f64, DataProviderError>;
+
+    async fn pool_fixed_cost(
+        &self,
+        pool_hash: &str,
+    ) -> Result<BigDecimal, DataProviderError>;
+
+    async fn pool_reward_address(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError>;
+
+    async fn pool_owner(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError>;
+
+    async fn pool_registration(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError>;
+
+    async fn pool_retirement(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i32, DataProviderError>;
+
+    async fn pool_url(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError>;
+
+    async fn pool_ticker(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError>;
+
+    async fn pool_metadata_json(
+        &self,
+        pool_hash: &str,
+    ) -> Result<Value, DataProviderError>;
+
+    async fn pool_name(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError>;
+
+    async fn pool_homepage(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError>;
+
+    async fn pool_description(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError>;
 }
 
 pub struct DataProvider<T: CardanoDataProvider> {
@@ -338,5 +418,117 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         stake_addr: &str,
     ) -> Result<Vec<RewardView>, DataProviderError> {
         dbg!(self.provider().retrieve_generated_rewards(stake_addr).await)
+    }
+
+    async fn pool_vrf_key_hash (
+        &self,
+        pool_hash: &str,
+    ) -> Result<Vec<u8>, DataProviderError> {
+        self.provider().pool_vrf_key_hash(pool_hash).await
+    }
+
+    async fn pool_blocks_minted (
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        self.provider().pool_blocks_minted(pool_hash).await
+    }
+
+    async fn pool_blocks_current_epoch (
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        self.provider().pool_blocks_current_epoch(pool_hash).await
+    }
+
+    async fn pool_declared_pledge (
+        &self,
+        pool_hash: &str,
+    ) -> Result<BigDecimal, DataProviderError> {
+        self.provider().pool_declared_pledge(pool_hash).await
+    }
+
+    async fn pool_margin_cost(
+        &self, 
+        pool_hash: &str,
+    ) -> Result<f64, DataProviderError> {
+        self.provider().pool_margin_cost(pool_hash).await
+    }
+
+    async fn pool_fixed_cost(
+        &self,
+        pool_hash: &str,
+    ) -> Result<BigDecimal, DataProviderError> {
+        self.provider().pool_fixed_cost(pool_hash).await
+    }
+
+    async fn pool_reward_address(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        self.provider().pool_reward_address(pool_hash).await
+    }
+
+    async fn pool_owner(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        self.provider().pool_owner(pool_hash).await
+    }
+
+    async fn pool_registration(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        self.provider().pool_registration(pool_hash).await
+    }
+
+    async fn pool_retirement(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i32, DataProviderError> {
+        self.provider().pool_retirement(pool_hash).await
+    }
+
+    async fn pool_url(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        self.provider().pool_url(pool_hash).await
+    }
+
+    async fn pool_ticker(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        self.provider().pool_ticker(pool_hash).await
+    }
+
+    async fn pool_metadata_json(
+        &self,
+        pool_hash: &str,
+    ) -> Result<Value, DataProviderError> {
+        self.provider().pool_metadata_json(pool_hash).await
+    }
+
+    async fn pool_name(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        self.provider().pool_name(pool_hash).await
+    }
+
+    async fn pool_homepage(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        self.provider().pool_homepage(pool_hash).await
+    }
+
+    async fn pool_description(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        self.provider().pool_description(pool_hash).await
     }
 }

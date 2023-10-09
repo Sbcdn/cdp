@@ -7,6 +7,7 @@ use crate::provider::error::DataProviderError;
 use self::error::DataProviderCarbError;
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
+use serde_json::Value;
 
 pub mod api;
 pub mod error;
@@ -254,5 +255,118 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         stake_addr: &str,
     ) -> Result<Vec<RewardView>, DataProviderError> {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
+    }
+
+    async fn pool_vrf_key_hash (
+        &self,
+        pool_hash: &str,
+    ) -> Result<Vec<u8>, DataProviderError> {
+        Ok(api::pool_vrf_key_hash(self, pool_hash)?)
+    }
+
+    async fn pool_blocks_minted (
+        &self, 
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        Ok(api::pool_blocks_minted(self, pool_hash)?)
+    }
+
+    async fn pool_blocks_current_epoch(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        Ok(api::pool_blocks_current_epoch(self, pool_hash)?)
+    }
+
+    async fn pool_declared_pledge(
+        &self,
+        pool_hash: &str,
+    ) -> Result<BigDecimal, DataProviderError> {
+        Ok(api::pool_declared_pledge(self, pool_hash)?)
+    }
+
+    async fn pool_margin_cost(
+        &self,
+        pool_hash: &str,
+    ) -> Result<f64, DataProviderError> {
+        Ok(api::pool_margin_cost(self, pool_hash)?)
+    }
+
+    async fn pool_fixed_cost(
+        &self,
+        pool_hash: &str,
+    ) -> Result<BigDecimal, DataProviderError> {
+        Ok(api::pool_fixed_cost(self, pool_hash)?)
+    }
+
+    async fn pool_reward_address(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        Ok(api::pool_reward_address(self, pool_hash)?)
+    }
+
+    async fn pool_owner(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        Ok(api::pool_owner(self, pool_hash)?)
+    }
+
+    async fn pool_registration(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        Ok(api::pool_registration(self, pool_hash)?)
+    }
+
+    async fn pool_retirement(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i32, DataProviderError> {
+        Ok(api::pool_retirement(self, pool_hash)?)
+    }
+
+
+    async fn pool_url(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        Ok(api::pool_url(self, pool_hash)?)
+    }
+
+    async fn pool_ticker(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        Ok(api::pool_ticker(self, pool_hash)?)
+    }
+
+    async fn pool_metadata_json(
+        &self,
+        pool_hash: &str,
+    ) -> Result<Value, DataProviderError> {
+        Ok(api::pool_metadata_json(self, pool_hash)?)
+    }
+
+    async fn pool_name(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        Ok(api::pool_name(self, pool_hash)?)
+    }
+
+    async fn pool_homepage(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        Ok(api::pool_homepage(self, pool_hash)?)
+    }
+
+    async fn pool_description(
+        &self,
+        pool_hash: &str,
+    ) -> Result<String, DataProviderError> {
+        Ok(api::pool_description(self, pool_hash)?)
     }
 }

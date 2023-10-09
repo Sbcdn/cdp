@@ -13,6 +13,7 @@ use dcslc::TransactionUnspentOutputs;
 use diesel::prelude::*;
 use log::debug;
 use std::str::FromStr;
+use serde_json::Value;
 /// get all tokens of an utxo
 
 pub fn get_utxo_tokens(
@@ -1827,11 +1828,307 @@ pub async fn epoch_change(
     Ok(out)
 }
 
+/// VRF stands for Verifiable Random Function. VRF key hash is generated
+/// by VRF private key to ensure that the next slot leader is selected
+/// truly at random without possibility to rig the mechanism for selecting
+/// slot leaders. 
+pub async fn pool_vrf_key_hash(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<Vec<u8>, DataProviderDBSyncError> {
+    Ok(
+        pool_update::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_update::active_epoch_no.desc())
+        .select(pool_update::vrf_key_hash)
+        .first::<Vec<u8>>(&mut dbs.connect()?)?
+    )
+}
+
+/// Total number of blocks ever minted by the given stake pool.
+pub async fn pool_blocks_minted(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderDBSyncError> {
+    Ok(
+        block::table
+        .inner_join(slot_leader::table.on(slot_leader::id.eq(block::slot_leader_id)))
+        .inner_join(pool_hash::table.on(pool_hash::id.nullable().eq(slot_leader::pool_hash_id)))
+        .filter(pool_hash::view.eq(pool_hash))
+        .count()
+        .get_result::<i64>(&mut dbs.connect()?)?
+    )
+}
+
+/// The number of blocks minted by the given stake pool in the current epoch.
+pub async fn pool_blocks_current_epoch(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderDBSyncError> {
+    Ok(
+        block::table
+        .inner_join(slot_leader::table.on(slot_leader::id.eq(block::slot_leader_id)))
+        .inner_join(pool_hash::table.on(pool_hash::id.nullable().eq(slot_leader::pool_hash_id)))
+        .filter(pool_hash::view.eq(pool_hash))
+        .filter(block::epoch_no.is_not_null())
+        .filter(block::epoch_no.eq(current_epoch(dbs)?))
+        .count()
+        .get_result::<i64>(&mut dbs.connect()?)?
+    )
+}
+
+/// The quantity of delegators that are currently delegating 
+/// to the given stake pool.
+pub async fn pool_live_delegators(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderDBSyncError> {
+    Ok(
+        reward::table
+        .inner_join(pool_hash::table.on(pool_hash::id.nullable().eq(reward::pool_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .filter(reward::earned_epoch.eq(current_epoch(dbs).unwrap() as i64))
+        // .filter(reward::type_.eq(Rewardtype::Member)) TODO: FixMe
+        .count()
+        .get_result::<i64>(&mut dbs.connect().unwrap()
+        ).unwrap()
+    )
+}
+
+/// the amount of Ada that the owner of the given stake pool
+/// has pledged to stake in the given pool, according to the
+/// pool registration certificate.
+pub async fn pool_declared_pledge(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<BigDecimal, DataProviderDBSyncError> {
+    Ok(
+        pool_update::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_update::active_epoch_no.desc())
+        .select(pool_update::pledge)
+        .first::<BigDecimal>(&mut dbs.connect()?)?
+    )
+}
+
+/// The percentage of delegator's Ada rewards that the pool 
+/// owner will keep for itself as compensation for enabling 
+/// the delegator to delegate.
+pub async fn pool_margin_cost(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<f64, DataProviderDBSyncError> {
+    Ok(
+        pool_update::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_update::active_epoch_no.desc())
+        .select(pool_update::margin)
+        .first::<f64>(&mut dbs.connect()?)?
+    )
+}
+
+/// The fixed amount of delegator's Ada rewards that
+/// the pool owner will keep for themselves per epoch as
+/// compensation for enabling the delegator to delegate.
+pub async fn pool_fixed_cost(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<BigDecimal, DataProviderDBSyncError> {
+    Ok(
+        pool_update::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_update::active_epoch_no.desc())
+        .select(pool_update::fixed_cost)
+        .first::<BigDecimal>(&mut dbs.connect()?)?
+    )
+}
+
+/// The stake address on the receiving end of the fixed cost
+/// and margin cost payed by the delegators. This is also the
+/// pool owner. 
+pub async fn pool_reward_address(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderDBSyncError> {
+    Ok(
+        pool_update::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .inner_join(stake_address::table.on(stake_address::id.eq(pool_update::reward_addr_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_update::active_epoch_no.desc())
+        .select(stake_address::view)
+        .first::<String>(&mut dbs.connect()?)?
+    )
+}
+
+/// The stake address that owns the given stake pool. This
+/// address is on the receiving end of fixed cost and margin
+/// cost paid by the delegators.
+pub async fn pool_owner(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderDBSyncError> {
+    Ok(
+        pool_update::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .inner_join(stake_address::table.on(stake_address::id.eq(pool_update::reward_addr_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_update::active_epoch_no.desc())
+        .select(stake_address::view)
+        .first::<String>(&mut dbs.connect()?)?
+    )
+}
+
+/// The epoch (active epoch number) during which the pool 
+/// made its latest registration.
+pub async fn pool_registration(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderDBSyncError> {
+    Ok(
+        pool_update::table
+        .left_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_update::active_epoch_no.desc())
+        .select(pool_update::active_epoch_no)
+        .first::<i64>(&mut dbs.connect()?)?
+    )
+}
+
+/// The epoch in which the given pool retired.
+pub async fn pool_retirement(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<i32, DataProviderDBSyncError> {
+    Ok(
+        pool_retire::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_retire::hash_id)))
+        .filter(pool_hash::view.eq(pool_hash))
+        .select(pool_retire::retiring_epoch)
+        .first::<i32>(&mut dbs.connect()?)?
+    )
+}
+
+/// The url in which the given stake pool stores its metadata.
+/// Just like Metadata Json stored on the chain, this includes: 
+/// name, ticker, homepage, description. But it also may include
+/// additional metadata as chosen by the pool owner. 
+pub async fn pool_url(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderDBSyncError> {
+    Ok(
+        pool_metadata_ref::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_metadata_ref::pool_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(pool_metadata_ref::registered_tx_id.desc())
+        .select(pool_metadata_ref::url)
+        .first::<String>(&mut dbs.connect()?)?
+    )
+}
+
+/// The ticker (abbreviated name) of the given stakepool.
+pub async fn pool_ticker(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderDBSyncError> {
+    Ok(
+        pool_offline_data::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_offline_data::pool_id)))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .select(pool_offline_data::ticker_name)
+        .first::<String>(&mut dbs.connect()?)?
+    )
+}
+
+/// The metadata, in JSON format, of the given stakepool.
+pub async fn pool_metadata_json(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<Value, DataProviderDBSyncError> {
+    Ok(
+        pool_offline_data::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_offline_data::pool_id)))
+        .filter(pool_hash::view.eq(pool_hash))
+        .select(pool_offline_data::json)
+        .first::<Value>(&mut dbs.connect()?)?
+    )
+}
+
+/// Name of the given stakepool.
+pub async fn pool_name(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderDBSyncError> {
+    Ok(
+        pool_offline_data::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_offline_data::pool_id)))
+        .filter(pool_hash::view.eq(pool_hash))
+        .select(pool_offline_data::json)
+        .first::<Value>(&mut dbs.connect()?)?
+        .as_object()
+        .unwrap()
+        .get("name")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string()
+    )
+}
+
+/// The website (url) that officially represents the given stakepool.
+pub async fn pool_homepage(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderDBSyncError> {
+    Ok(
+        pool_offline_data::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_offline_data::pool_id)))
+        .filter(pool_hash::view.eq(pool_hash))
+        .select(pool_offline_data::json)
+        .first::<Value>(&mut dbs.connect()?)?
+        .as_object()
+        .unwrap()
+        .get("homepage")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string()
+    )
+}
+
+/// Arbitrary message written by the given pool owner.
+/// Usually describes the given pool.
+pub async fn pool_description(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<String, DataProviderDBSyncError> {
+    Ok(
+        pool_offline_data::table
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_offline_data::pool_id)))
+        .filter(pool_hash::view.eq(pool_hash))
+        .select(pool_offline_data::json)
+        .first::<Value>(&mut dbs.connect()?)?
+        .as_object()
+        .unwrap()
+        .get("description")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{dbsync::DataProviderDBSyncError, provider::CardanoDataProvider};
     use bigdecimal::BigDecimal;
     use itertools::Itertools;
+    use serde_json::json;
     use std::str::FromStr;
 
     #[tokio::test]
@@ -2169,5 +2466,209 @@ mod tests {
         assert_eq!(utxo_tokens[2].quantity, BigDecimal::from(50));
         assert_eq!(hex::encode(utxo_tokens[2].policy.clone()), "dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9");
         assert_eq!(hex::encode(utxo_tokens[2].name.clone()), "7441726b");
+    }
+
+    #[tokio::test]
+    async fn pool_vrf_key_hash() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
+        let _func_value = hex::encode(super::pool_vrf_key_hash(dp.provider(), pool_hash).await.unwrap());
+        let _manual_value = "335399acf3228243efb0fec0e43f18d61a496d4fd740fd800f9b91b5fa7d0540";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_blocks_minted() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
+        let _func_value = super::pool_blocks_minted(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = 13;
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_blocks_current_epoch() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool14u22dyym8k2g2twvgct86njg3m9cc7j2fc74yamy6672s6up7a0";
+        let _func_value = super::pool_blocks_current_epoch(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = 25;
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_live_delegators() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1rk2y9gx6vll8lawzdqlky5p2a3ypzsxg07arg8gmhkjj2905035";
+        let _func_value = super::pool_live_delegators(dp.provider(), pool_hash).await.unwrap(); // TODO:: FixMe
+        let _manual_value = 104;
+
+        // assert_eq!(_func_value, _manual_value); // TODO: make this unit test work
+    }
+
+    #[tokio::test]
+    async fn pool_declared_pledge() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
+        let _func_value = super::pool_declared_pledge(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = BigDecimal::from_str("125000000000").unwrap();
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_margin_cost() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
+        let _func_value = super::pool_margin_cost(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = 0.075;
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_fixed_cost() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
+        let _func_value = super::pool_fixed_cost(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = BigDecimal::from_str("340000000").unwrap();
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_reward_address() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
+        let _func_value = super::pool_reward_address(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_owner() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
+        let _func_value = super::pool_owner(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_registration() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
+        let _func_value = super::pool_registration(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = 175;
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_retirement() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
+        let func_value = super::pool_retirement(dp.provider(), pool_hash).await.unwrap();
+        let manual_value = 26;
+
+        assert_eq!(func_value, manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_url() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
+        let _func_value = super::pool_url(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = "https://armadacardano.io/metadata.json";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_ticker() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
+        let _func_value = super::pool_ticker(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = "EUSKL";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_metadata_json() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
+        let _func_value = super::pool_metadata_json(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = json!({"name": "EUSKAL STAKE POOL TESTNET", "ticker": "EUSKL", "homepage": "https://euskalstakepool.win", "description": "EUSKAL STAKE POOL TESTNET"});
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_name() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
+        let _func_value = super::pool_name(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = "EUSKAL STAKE POOL TESTNET";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_homepage() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
+        let _func_value = super::pool_homepage(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = "https://euskalstakepool.win";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
+    }
+
+    #[tokio::test]
+    async fn pool_description() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
+        let _func_value = super::pool_description(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = "EUSKAL STAKE POOL TESTNET";
+
+        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 }

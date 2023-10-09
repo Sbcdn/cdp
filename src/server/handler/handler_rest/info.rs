@@ -598,7 +598,7 @@ pub async fn pool_blocks_current_epoch(
     Ok(rweb::Json::from(json!(pool_blocks_current_epoch)))
 }
 
-// #[get("pool/live_delegators/{pool_hash}")] // TODO: FixMe (start with dbsync/api.rs)
+// // #[get("pool/live_delegators/{pool_hash}")] // TODO: FixMe (start with dbsync/api.rs)
 
 #[get("/pool/declared_pledge/{pool_hash}")]
 #[openapi(

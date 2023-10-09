@@ -433,7 +433,7 @@ pub fn stakers_on_pool(
     Ok(pool_stake)
 }
 
-pub fn deligations_per_pool_for_epochs(
+pub fn delegations_per_pool_for_epochs(
     dbs: &DBSyncProvider,
     pool: &str,
     start_epoch: i64,

@@ -8,11 +8,11 @@ service ChainFollowerRequestService {
     rpc AyaValidatorStake (StakeRequest) returns (StateResponse);
     rpc AyaValidatorRegistrationEvent (ValidatorRequest) returns (EventResponse);
     rpc AyaValidatorUnregistrationEvent (ValidatorRequest) returns (EventResponse);
-    rpc DeligatorStakeEvent (StakeRequest) returns (EventResponse);
-    rpc DeligatorStaked   (StakeRequest) returns (StateResponse);
-    rpc DeligatorUnstakeEvent (StakeRequest) returns (EventResponse);
-    rpc DeligatorUnbonding (StakeRequest) returns (StateResponse);
-    rpc DeligatorUnbondingEvent (StakeRequest) returns (EventResponse);
+    rpc DelegatorStakeEvent (StakeRequest) returns (EventResponse);
+    rpc DelegatorStaked   (StakeRequest) returns (StateResponse);
+    rpc DelegatorUnstakeEvent (StakeRequest) returns (EventResponse);
+    rpc DelegatorUnbonding (StakeRequest) returns (StateResponse);
+    rpc DelegatorUnbondingEvent (StakeRequest) returns (EventResponse);
 };
 
 enum EpochRequestType {

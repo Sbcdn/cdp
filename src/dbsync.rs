@@ -137,13 +137,13 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
         Ok(api::stakers_on_pool(self, pool, epoch)?)
     }
 
-    async fn deligations_per_pool_epoch_intervall(
+    async fn delegations_per_pool_epoch_intervall(
         &self,
         pool: &str,
         start_epoch: i64,
         end_epoch: i64,
     ) -> Result<Vec<DelegationView>, DataProviderError> {
-        Ok(api::deligations_per_pool_for_epochs(
+        Ok(api::delegations_per_pool_for_epochs(
             self,
             pool,
             start_epoch,

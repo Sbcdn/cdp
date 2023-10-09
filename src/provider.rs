@@ -70,7 +70,7 @@ pub trait CardanoDataProvider {
         epoch: i32,
     ) -> Result<Vec<StakeDelegationView>, DataProviderError>;
     /// return the delegations for a pool in an epoch intervall
-    async fn deligations_per_pool_epoch_intervall(
+    async fn delegations_per_pool_epoch_intervall(
         &self,
         pool: &str,
         start_epoch: i64,
@@ -310,14 +310,14 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         self.provider().stakers_on_pool(pool, epoch).await
     }
 
-    async fn deligations_per_pool_epoch_intervall(
+    async fn delegations_per_pool_epoch_intervall(
         &self,
         pool: &str,
         start_epoch: i64,
         end_epoch: i64,
     ) -> Result<Vec<DelegationView>, DataProviderError> {
         self.provider()
-            .deligations_per_pool_epoch_intervall(pool, start_epoch, end_epoch)
+            .delegations_per_pool_epoch_intervall(pool, start_epoch, end_epoch)
             .await
     }
 

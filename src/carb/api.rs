@@ -22,7 +22,7 @@ pub fn select_addr_of_first_transaction(
     bfp: &CarbProvider,
     stake_address_in: &str,
 ) -> Result<String, DataProviderCarbError> {
-    Ok("".to_owned())
+    todo!()
 }
 
 /// get all utxos of an address
@@ -31,7 +31,7 @@ pub fn utxo_by_dataumhash(
     addr: &str,
     datumhash: &Vec<u8>,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderCarbError> {
-    Err(DataProviderCarbError::Custom("not implemented".to_string()))
+    todo!()
 }
 
 /// returns Utxo of a certain datumhash on an address
@@ -40,7 +40,7 @@ pub fn utxo_by_txid(
     txhash: &Vec<u8>,
     index: i16,
 ) -> Result<dcslc::TransactionUnspentOutput, DataProviderCarbError> {
-    Err(DataProviderCarbError::Custom("not implemented".to_string()))
+    todo!()
 }
 
 /// get all utxos of an address
@@ -48,7 +48,7 @@ pub fn get_address_utxos(
     bfp: &CarbProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(dcslc::TransactionUnspentOutputs::new())
+    todo!()
 }
 
 /// Get all utxos of a stake address
@@ -56,7 +56,7 @@ pub fn get_stake_address_utxos(
     bfp: &CarbProvider,
     stake_addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(dcslc::TransactionUnspentOutputs::new())
+    todo!()
 }
 
 /// Get all utxos of a stake address
@@ -64,18 +64,18 @@ pub fn asset_utxos_on_addr(
     bfp: &CarbProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderCarbError> {
-    Ok(dcslc::TransactionUnspentOutputs::new())
+    todo!()
 }
 
 pub fn find_datums_for_tx(
     bfp: &CarbProvider,
     txid: &Vec<u8>,
 ) -> Result<Vec<CDPDatum>, DataProviderError> {
-    todo!();
+    todo!()
 }
 
 pub fn slot(bfp: &CarbProvider) -> Result<i64, DataProviderCarbError> {
-    Ok(0)
+    todo!()
 }
 
 pub fn stakers_on_pool(
@@ -83,16 +83,16 @@ pub fn stakers_on_pool(
     pool: &str,
     epoch: i32,
 ) -> Result<Vec<StakeDelegationView>, DataProviderCarbError> {
-    todo!();
+    todo!()
 }
 
-pub fn deligations_per_pool_for_epochs(
+pub fn delegations_per_pool_for_epochs(
     bfp: &CarbProvider,
     pool: &str,
     start_epoch: i64,
     end_epoch: i64,
 ) -> Result<Vec<DelegationView>, DataProviderCarbError> {
-    todo!();
+    todo!()
 }
 
 pub fn pool_total_stake(
@@ -112,7 +112,7 @@ pub fn fingerprint(
     policy: &str,
     tokenname: &str,
 ) -> Result<String, DataProviderCarbError> {
-    Ok("".to_owned())
+    todo!()
 }
 
 pub fn token_info(
@@ -141,7 +141,7 @@ pub fn check_stakeaddr_registered(
     bfp: &CarbProvider,
     stake_addr_in: &str,
 ) -> Result<bool, DataProviderCarbError> {
-    Ok(false)
+    todo!()
 }
 
 pub fn lookup_token_holders(
@@ -163,26 +163,17 @@ pub fn mint_metadata(
     bfp: &CarbProvider,
     fingerprint_in: &str,
 ) -> Result<TokenInfoView, DataProviderCarbError> {
-    Ok(TokenInfoView {
-        fingerprint: "".to_owned(),
-        policy: hex::encode(""),
-        tokenname: "".to_owned(),
-        meta_key: None,
-        json: None,
-        txhash: None,
-        quantity: None,
-        mint_slot: None,
-    })
+    todo!()
 }
 
 pub fn pool_valid(bfp: &CarbProvider, pool_id: &str) -> Result<bool, DataProviderCarbError> {
-    Ok(true)
+    todo!()
 }
 
 pub fn txhash_spent(bfp: &CarbProvider, txhash: &str) -> Result<bool, DataProviderCarbError> {
     let txh_b = hex::decode(txhash)?;
 
-    Ok(false)
+    todo!()
 }
 
 pub fn retrieve_staked_amount (
@@ -190,14 +181,14 @@ pub fn retrieve_staked_amount (
     epoch: i32,
     stake_addr: &str,
 ) -> Result<BigDecimal, DataProviderError> {
-    Ok(BigDecimal::from(0))
+    todo!()
 }
 
 pub fn retrieve_generated_rewards (
     bfp: &CarbProvider,
     stake_addr: &str,
 ) -> Result<Vec<RewardView>, DataProviderError> {
-    Ok(vec![])
+    todo!()
 }
 
 pub fn pool_vrf_key_hash (

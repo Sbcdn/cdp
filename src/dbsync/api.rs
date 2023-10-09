@@ -1,6 +1,7 @@
 use super::error::DataProviderDBSyncError;
-use super::models::{PoolHash, PoolRetire, Rewardtype, UnspentUtxo, UtxoView};
+use super::models::{PoolHash, PoolRetire, UnspentUtxo, UtxoView};
 use super::schema::*;
+use super::models::RewardType;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, PoolView, RewardView,
     ScriptView, StakeDelegationView, StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
@@ -10,6 +11,7 @@ use crate::models::{
 use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use dcslc::TransactionUnspentOutputs;
+use diesel::dsl::count_star;
 use diesel::prelude::*;
 use log::debug;
 use std::str::FromStr;
@@ -1886,13 +1888,13 @@ pub async fn pool_live_delegators(
 ) -> Result<i64, DataProviderDBSyncError> {
     Ok(
         reward::table
-        .inner_join(pool_hash::table.on(pool_hash::id.nullable().eq(reward::pool_id)))
+        .filter(reward::pool_id.is_not_null())
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(reward::pool_id.assume_not_null())))
         .filter(pool_hash::view.eq(pool_hash.to_string()))
         .filter(reward::earned_epoch.eq(current_epoch(dbs).unwrap() as i64))
-        // .filter(reward::type_.eq(Rewardtype::Member)) TODO: FixMe
+        .filter(reward::type_.eq(RewardType::Member)) // TODO: FixMe
         .count()
-        .get_result::<i64>(&mut dbs.connect().unwrap()
-        ).unwrap()
+        .get_result::<i64>(&mut dbs.connect()?)?
     )
 }
 
@@ -2513,7 +2515,7 @@ mod tests {
         let _func_value = super::pool_live_delegators(dp.provider(), pool_hash).await.unwrap(); // TODO:: FixMe
         let _manual_value = 104;
 
-        // assert_eq!(_func_value, _manual_value); // TODO: make this unit test work
+        assert_eq!(_func_value, _manual_value); // TODO: make this unit test work
     }
 
     #[tokio::test]

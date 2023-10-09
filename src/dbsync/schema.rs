@@ -1,17 +1,24 @@
 pub mod sql_types {
-    #[derive(diesel::sql_types::SqlType)]
+    use diesel::{
+        sql_types::SqlType,
+        query_builder::QueryId
+    };
+
+    use diesel_derive_enum::DbEnum;
+
+    #[derive(SqlType, QueryId)]
     #[diesel(postgres_type(name = "Syncstatetype"))]
     pub struct Syncstatetype;
 
-    #[derive(diesel::sql_types::SqlType)]
+    #[derive(SqlType, QueryId)]
     #[diesel(postgres_type(name = "Scriptpurposetype"))]
     pub struct Scriptpurposetype;
 
-    #[derive(diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "Rewardtype"))]
-    pub struct Rewardtype;
+    #[derive(SqlType, QueryId)]
+    #[diesel(postgres_type(name = "rewardtype"))]
+    pub struct RewardTypeEnum;
 
-    #[derive(diesel::sql_types::SqlType)]
+    #[derive(SqlType, QueryId)]
     #[diesel(postgres_type(name = "Scripttype"))]
     pub struct Scripttype;
 }
@@ -469,11 +476,14 @@ table! {
 }
 
 table! {
+    use diesel::sql_types::*;
+    use super::sql_types::RewardTypeEnum;
+
     reward (id) {
         id -> Int8,
         addr_id -> Int8,
         #[sql_name = "type"]
-        type_ -> crate::dbsync::schema::sql_types::Rewardtype,
+        type_ -> RewardTypeEnum,
         amount -> Numeric,
         earned_epoch -> Int8,
         spendable_epoch -> Int8,

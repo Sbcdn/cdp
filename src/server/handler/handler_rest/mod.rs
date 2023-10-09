@@ -27,7 +27,7 @@ use rweb::*;
         is_nft,
         retrieve_staked_amount,
         retrieve_generated_rewards,
-        pool_vrf_key_hash,
+        pool_vrf_key_hash, 
         pool_blocks_minted,
         pool_blocks_current_epoch,
         pool_declared_pledge,

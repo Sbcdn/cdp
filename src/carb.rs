@@ -278,6 +278,20 @@ impl super::provider::CardanoDataProvider for CarbProvider {
         Ok(api::pool_blocks_current_epoch(self, pool_hash)?)
     }
 
+    async fn pool_reward_recipients(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        Ok(api::pool_reward_recipients(self, pool_hash)?)
+    }
+
+    async fn pool_last_reward_earned_epoch(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        Ok(api::pool_last_reward_earned_epoch(self, pool_hash)?)
+    }
+
     async fn pool_declared_pledge(
         &self,
         pool_hash: &str,

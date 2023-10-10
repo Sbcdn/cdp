@@ -223,6 +223,20 @@ pub fn pool_blocks_current_epoch(
     todo!()
 }
 
+pub fn pool_reward_recipients(
+    bfp: &KoiosProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderKoiosError> {
+    todo!()
+}
+
+pub fn pool_last_reward_earned_epoch(
+    bfp: &KoiosProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderKoiosError> {
+    todo!()
+}
+
 pub fn pool_declared_pledge(
     bfp: &KoiosProvider,
     pool_hash: &str,

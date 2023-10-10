@@ -598,7 +598,50 @@ pub async fn pool_blocks_current_epoch(
     Ok(rweb::Json::from(json!(pool_blocks_current_epoch)))
 }
 
-// // #[get("pool/live_delegators/{pool_hash}")] // TODO: FixMe (start with dbsync/api.rs)
+#[get("/pool/pool_reward_recipients/{pool_hash}")]
+#[openapi(
+    id = "api.info.pool.pool_reward_recipients",
+    tags("Pool"),
+    summary = "The quantity of delegators that received rewards last time (epoch) the given pool was a slot leader."
+)]
+pub async fn pool_reward_recipients(
+    pool_hash: String,
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").unwrap(),
+    }));
+
+    let pool_reward_recipients = dp
+        .pool_reward_recipients(&pool_hash)
+        .await
+        .map_err(|_| RESTError::Custom("Couldn't find the quantity of delegators that received rewards".to_string()))?;
+
+    Ok(rweb::Json::from(json!(pool_reward_recipients)))
+}
+
+#[get("/pool/last_reward_earned_epoch/{pool_hash}")]
+#[openapi(
+    id = "api.info.pool.last_reward_earned_epoch",
+    tags("Pool"),
+    summary = "The last epoch when the given pool gave rewards to delegators"
+)]
+pub async fn pool_last_reward_earned_epoch(
+    pool_hash: String,
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").unwrap(),
+    }));
+
+    let pool_last_reward_earned_epoch = dp
+        .pool_last_reward_earned_epoch(&pool_hash)
+        .await
+        .map_err(|_| RESTError::Custom("Couldn't find the last epoch when the given pool distributed rewards".to_string()))?;
+
+    Ok(rweb::Json::from(json!(pool_last_reward_earned_epoch)))
+}
+
 
 #[get("/pool/declared_pledge/{pool_hash}")]
 #[openapi(

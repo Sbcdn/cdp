@@ -280,6 +280,20 @@ pub fn pool_blocks_current_epoch(
     todo!()
 }
 
+pub fn pool_reward_recipients(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderError> {
+    todo!()
+}
+
+pub fn pool_last_reward_earned_epoch(
+    bfp: &BlockfrostProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderError> {
+    todo!()
+}
+
 pub fn pool_declared_pledge(
     bfp: &BlockfrostProvider,
     pool_hash: &str,

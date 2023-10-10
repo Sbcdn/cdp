@@ -221,6 +221,20 @@ pub fn pool_blocks_current_epoch(
     todo!()
 }
 
+pub fn pool_reward_recipients(
+    bfp: &CarbProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderError> {
+    todo!()
+}
+
+pub fn pool_last_reward_earned_epoch(
+    bfp: &CarbProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderError> {
+    todo!()
+}
+
 pub fn pool_declared_pledge(
     bfp: &CarbProvider,
     pool_hash: &str,

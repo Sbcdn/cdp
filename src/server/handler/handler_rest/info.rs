@@ -395,9 +395,9 @@ pub async fn handle_asset_for_stake_address(
 
 #[get("/pools/{page}")]
 #[openapi(
-    id = "api.info.pools",
+    id = "api.info.pools_one_page",
     tags("Stake Pool"),
-    summary = "Get Stake Pool List"
+    summary = "Get Stake Pool List (specified page)"
 )]
 pub async fn retrieve_active_pools(
     page: usize,
@@ -416,6 +416,23 @@ pub async fn retrieve_active_pools(
         );
     }
     Ok(rweb::Json::from(json!(pools_paged[page])))
+}
+
+#[get("/pools/pages")]
+#[openapi(
+    id = "api.info.pools_all_pages",
+    tags("Stake Pool"),
+    summary = "Get Stake Pool List (all pages)"
+)]
+pub async fn retrieve_active_pools_all_pages(
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").unwrap(),
+    }));
+    let pools = crate::dbsync::get_pools(dp.provider()).await.unwrap();
+    let pools_paged: Vec<Vec<PoolView>> = pools.chunks(100).map(|s| s.into()).collect();
+    Ok(rweb::Json::from(json!(pools_paged)))
 }
 
 #[get("/tokens/supply/{fingerprint}")]

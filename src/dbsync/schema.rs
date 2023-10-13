@@ -14,9 +14,10 @@ pub mod sql_types {
     #[diesel(postgres_type(name = "Scriptpurposetype"))]
     pub struct Scriptpurposetype;
 
+    /// Represents SQL enum
     #[derive(SqlType, QueryId)]
     #[diesel(postgres_type(name = "rewardtype"))]
-    pub struct RewardTypeEnum;
+    pub struct RewardType;
 
     #[derive(SqlType, QueryId)]
     #[diesel(postgres_type(name = "Scripttype"))]
@@ -477,13 +478,13 @@ table! {
 
 table! {
     use diesel::sql_types::*;
-    use super::sql_types::RewardTypeEnum;
+    use super::sql_types::RewardType;
 
     reward (id) {
         id -> Int8,
         addr_id -> Int8,
         #[sql_name = "type"]
-        type_ -> RewardTypeEnum,
+        type_ -> RewardType,
         amount -> Numeric,
         earned_epoch -> Int8,
         spendable_epoch -> Int8,

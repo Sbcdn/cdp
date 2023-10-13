@@ -150,6 +150,16 @@ pub trait CardanoDataProvider {
         pool_hash: &str,
     ) -> Result<i64, DataProviderError>;
 
+    async fn pool_reward_recipients(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError>;
+
+    async fn pool_last_reward_earned_epoch(
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError>;
+
     async fn pool_declared_pledge(
         &self,
         pool_hash: &str,
@@ -439,6 +449,20 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         pool_hash: &str,
     ) -> Result<i64, DataProviderError> {
         self.provider().pool_blocks_current_epoch(pool_hash).await
+    }
+
+    async fn pool_reward_recipients (
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        self.provider().pool_reward_recipients(pool_hash).await
+    }
+
+    async fn pool_last_reward_earned_epoch (
+        &self,
+        pool_hash: &str,
+    ) -> Result<i64, DataProviderError> {
+        self.provider().pool_last_reward_earned_epoch(pool_hash).await
     }
 
     async fn pool_declared_pledge (

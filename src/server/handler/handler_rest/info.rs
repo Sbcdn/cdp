@@ -24,7 +24,7 @@ pub async fn utxos_per_addr(
 ) -> Result<Json<serde_json::Value>, Rejection> {
     // check against dataprovider
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let utxos = dp
@@ -48,12 +48,12 @@ pub async fn address_exists(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
-    let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses).unwrap();
+    let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses)?;
     let addresses = addresses.iter_mut().map(|address| &address[..]).collect();
 
-    let result = dp.addresses_exist(&addresses).await.unwrap();
+    let result = dp.addresses_exist(&addresses).await?;
 
     Ok(rweb::Json::from(json!(result)))
 }
@@ -84,7 +84,7 @@ pub async fn mint_metadata(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: dotenv::var("DBSYNC_URL").unwrap(),
+        db_path: dotenv::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
     let metadata: TokenInfoView = match dp.mint_metadata(&fingerprint).await {
         Ok(metadata) => metadata,
@@ -105,10 +105,10 @@ pub async fn mint_metadata_policy_assetname(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
     let fingerprint = make_fingerprint(&policy, &assetname).unwrap();
-    let metadata: TokenInfoView = dp.mint_metadata(&fingerprint).await.unwrap();
+    let metadata: TokenInfoView = dp.mint_metadata(&fingerprint).await?;
     Ok(rweb::Json::from(json!(metadata)))
 }
 
@@ -124,14 +124,14 @@ pub async fn tx_history(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
-    let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses).unwrap();
+    let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses)?;
     let addresses = addresses.iter_mut().map(|address| &address[..]).collect();
 
     let slot = slot.parse::<u64>().ok();
 
-    let history = dp.tx_history(&addresses, slot).await.unwrap();
+    let history = dp.tx_history(&addresses, slot).await?;
 
     Ok(rweb::Json::from(json!(history)))
 }
@@ -147,7 +147,7 @@ pub async fn tx_history_discover(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
     debug!("Try to discover Transaction: {:?}", hash);
     let tx = crate::dbsync::discover_transaction(dp.provider(), &hash).await;
@@ -190,13 +190,13 @@ pub(crate) async fn get_asset_for_addresses(
 ) -> Result<Vec<AssetHandle>, Rejection> {
     debug!("{addresses:?}");
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let mut utxos = TransactionUnspentOutputs::new();
 
     for a in addresses {
-        let us = dp.script_utxos(a).await.unwrap();
+        let us = dp.script_utxos(a).await?;
         utxos.merge(us);
     }
 
@@ -219,7 +219,7 @@ pub(crate) async fn get_asset_for_addresses(
                     let k = assets.keys();
                     for a in 0..k.len() {
                         let asset = k.get(a);
-                        let amt = assets.get(&asset).unwrap();
+                    let amt = assets.get(&asset).unwrap();
                         let fingerprint =
                             make_fingerprint(&policy.to_hex(), &hex::encode(asset.name())).unwrap();
                         // Deactivated Metadata Requests for performance
@@ -303,7 +303,7 @@ pub async fn handle_asset_for_stake_address(
     };
 
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
     // dp
     //.wallet_utxos(&reward_address.to_bech32(None).unwrap())
@@ -395,18 +395,18 @@ pub async fn handle_asset_for_stake_address(
 
 #[get("/pools/{page}")]
 #[openapi(
-    id = "api.info.pools",
+    id = "api.info.pools_one_page",
     tags("Stake Pool"),
-    summary = "Get Stake Pool List"
+    summary = "Get Stake Pool List (specified page)"
 )]
 pub async fn retrieve_active_pools(
     page: usize,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
-    let pools = crate::dbsync::get_pools(dp.provider()).await.unwrap();
+    let pools = crate::dbsync::get_pools(dp.provider()).await?;
     let pools_paged: Vec<Vec<PoolView>> = pools.chunks(100).map(|s| s.into()).collect();
     if pools_paged.len() < page {
         return make_error(
@@ -416,6 +416,23 @@ pub async fn retrieve_active_pools(
         );
     }
     Ok(rweb::Json::from(json!(pools_paged[page])))
+}
+
+#[get("/pools/pages")]
+#[openapi(
+    id = "api.info.pools_all_pages",
+    tags("Stake Pool"),
+    summary = "Get Stake Pool List (all pages)"
+)]
+pub async fn retrieve_active_pools_all_pages(
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
+    }));
+    let pools = crate::dbsync::get_pools(dp.provider()).await?;
+    let pools_paged: Vec<Vec<PoolView>> = pools.chunks(100).map(|s| s.into()).collect();
+    Ok(rweb::Json::from(json!(pools_paged)))
 }
 
 #[get("/tokens/supply/{fingerprint}")]
@@ -429,7 +446,7 @@ pub async fn token_supply(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
     let supply = crate::dbsync::token_supply(dp.provider(), &fingerprint).await;
     if let Err(e) = &supply {
@@ -439,7 +456,7 @@ pub async fn token_supply(
             None,
         );
     }
-    Ok(rweb::Json::from(json!(supply.unwrap())))
+    Ok(rweb::Json::from(json!(supply?)))
 }
 
 #[get("/tokens/isNft/")]
@@ -464,7 +481,7 @@ pub async fn is_nft(
     };
     debug!("Creatign dataprovider instance");
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
     debug!("Try to execute query");
     let supply = crate::dbsync::is_nft(
@@ -480,7 +497,7 @@ pub async fn is_nft(
             None,
         );
     }
-    Ok(rweb::Json::from(json!(supply.unwrap())))
+    Ok(rweb::Json::from(json!(supply?)))
 }
 
 #[get("/epoch/stake/amount/{stake_addr}/{epoch}")]
@@ -495,7 +512,7 @@ pub async fn retrieve_staked_amount(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     dbg!(epoch.clone());
@@ -521,7 +538,7 @@ pub async fn retrieve_generated_rewards(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let generated_rewards = dp
@@ -543,7 +560,7 @@ pub async fn pool_vrf_key_hash(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_vrf_key_hash = dp
@@ -565,7 +582,7 @@ pub async fn pool_blocks_minted(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_blocks_minted = dp
@@ -587,7 +604,7 @@ pub async fn pool_blocks_current_epoch(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_blocks_current_epoch = dp
@@ -598,7 +615,50 @@ pub async fn pool_blocks_current_epoch(
     Ok(rweb::Json::from(json!(pool_blocks_current_epoch)))
 }
 
-// #[get("pool/live_delegators/{pool_hash}")] // TODO: FixMe (start with dbsync/api.rs)
+#[get("/pool/pool_reward_recipients/{pool_hash}")]
+#[openapi(
+    id = "api.info.pool.pool_reward_recipients",
+    tags("Pool"),
+    summary = "The quantity of delegators that received rewards last time (epoch) the given pool was a slot leader."
+)]
+pub async fn pool_reward_recipients(
+    pool_hash: String,
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
+    }));
+
+    let pool_reward_recipients = dp
+        .pool_reward_recipients(&pool_hash)
+        .await
+        .map_err(|_| RESTError::Custom("Couldn't find the quantity of delegators that received rewards".to_string()))?;
+
+    Ok(rweb::Json::from(json!(pool_reward_recipients)))
+}
+
+#[get("/pool/last_reward_earned_epoch/{pool_hash}")]
+#[openapi(
+    id = "api.info.pool.last_reward_earned_epoch",
+    tags("Pool"),
+    summary = "The last epoch when the given pool gave rewards to delegators"
+)]
+pub async fn pool_last_reward_earned_epoch(
+    pool_hash: String,
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
+    }));
+
+    let pool_last_reward_earned_epoch = dp
+        .pool_last_reward_earned_epoch(&pool_hash)
+        .await
+        .map_err(|_| RESTError::Custom("Couldn't find the last epoch when the given pool distributed rewards".to_string()))?;
+
+    Ok(rweb::Json::from(json!(pool_last_reward_earned_epoch)))
+}
+
 
 #[get("/pool/declared_pledge/{pool_hash}")]
 #[openapi(
@@ -611,7 +671,7 @@ pub async fn pool_declared_pledge(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_declared_pledge = dp
@@ -633,7 +693,7 @@ pub async fn pool_margin_cost(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_margin_cost = dp
@@ -655,7 +715,7 @@ pub async fn pool_fixed_cost(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_fixed_cost = dp
@@ -677,7 +737,7 @@ pub async fn pool_reward_address(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_reward_address = dp
@@ -699,7 +759,7 @@ pub async fn pool_owner(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_owner = dp
@@ -721,7 +781,7 @@ pub async fn pool_registration(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_registration = dp
@@ -743,7 +803,7 @@ pub async fn pool_retirement(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_retirement = dp
@@ -765,7 +825,7 @@ pub async fn pool_url(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_url = dp
@@ -787,7 +847,7 @@ pub async fn pool_ticker(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_ticker = dp
@@ -809,7 +869,7 @@ pub async fn pool_metadata_json(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_metadata_json = dp
@@ -831,7 +891,7 @@ pub async fn pool_name(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_name = dp
@@ -853,7 +913,7 @@ pub async fn pool_homepage(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_homepage = dp
@@ -875,7 +935,7 @@ pub async fn pool_description(
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
+        db_path: std::env::var("DBSYNC_URL").map_err(|_| warp::reject::not_found())?,
     }));
 
     let pool_description = dp

@@ -1,6 +1,7 @@
 use super::error::DataProviderDBSyncError;
-use super::models::{PoolHash, PoolRetire, Rewardtype, UnspentUtxo, UtxoView};
+use super::models::{PoolHash, PoolRetire, UnspentUtxo, UtxoView};
 use super::schema::*;
+use super::models::RewardType;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, PoolView, RewardView,
     ScriptView, StakeDelegationView, StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
@@ -10,6 +11,7 @@ use crate::models::{
 use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use dcslc::TransactionUnspentOutputs;
+use diesel::dsl::count_star;
 use diesel::prelude::*;
 use log::debug;
 use std::str::FromStr;
@@ -1878,21 +1880,41 @@ pub async fn pool_blocks_current_epoch(
     )
 }
 
-/// The quantity of delegators that are currently delegating 
-/// to the given stake pool.
-pub async fn pool_live_delegators(
+/// The quantity of delegators that received rewards last time
+/// the given pool was a slot leader. This can be used as an
+/// estimation of how many are currently delegating on the
+/// given pool.
+pub async fn pool_reward_recipients(
     dbs: &DBSyncProvider,
     pool_hash: &str,
 ) -> Result<i64, DataProviderDBSyncError> {
     Ok(
         reward::table
-        .inner_join(pool_hash::table.on(pool_hash::id.nullable().eq(reward::pool_id)))
+        .filter(reward::pool_id.is_not_null())
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(reward::pool_id.assume_not_null())))
         .filter(pool_hash::view.eq(pool_hash.to_string()))
-        .filter(reward::earned_epoch.eq(current_epoch(dbs).unwrap() as i64))
-        // .filter(reward::type_.eq(Rewardtype::Member)) TODO: FixMe
+        .filter(reward::earned_epoch.eq(
+            pool_last_reward_earned_epoch(dbs, pool_hash).await?
+        ))
+        .filter(reward::type_.eq(RewardType::Member))
         .count()
-        .get_result::<i64>(&mut dbs.connect().unwrap()
-        ).unwrap()
+        .get_result::<i64>(&mut dbs.connect()?)?
+    )
+}
+
+/// When was the last time (epoch) the given pool was a slot leader?
+pub async fn pool_last_reward_earned_epoch(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<i64, DataProviderDBSyncError> {
+    Ok(
+        reward::table
+        .filter(reward::pool_id.is_not_null())
+        .inner_join(pool_hash::table.on(pool_hash::id.eq(reward::pool_id.assume_not_null())))
+        .filter(pool_hash::view.eq(pool_hash.to_string()))
+        .order(reward::earned_epoch.desc())
+        .select(reward::earned_epoch)
+        .first::<i64>(&mut dbs.connect()?)?
     )
 }
 
@@ -2476,8 +2498,6 @@ mod tests {
         let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
         let _func_value = hex::encode(super::pool_vrf_key_hash(dp.provider(), pool_hash).await.unwrap());
         let _manual_value = "335399acf3228243efb0fec0e43f18d61a496d4fd740fd800f9b91b5fa7d0540";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2488,8 +2508,6 @@ mod tests {
         let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
         let _func_value = super::pool_blocks_minted(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 13;
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2500,20 +2518,26 @@ mod tests {
         let pool_hash = "pool14u22dyym8k2g2twvgct86njg3m9cc7j2fc74yamy6672s6up7a0";
         let _func_value = super::pool_blocks_current_epoch(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 25;
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
-    async fn pool_live_delegators() {
+    async fn pool_reward_recipients() {
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
             db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
         }));
         let pool_hash = "pool1rk2y9gx6vll8lawzdqlky5p2a3ypzsxg07arg8gmhkjj2905035";
-        let _func_value = super::pool_live_delegators(dp.provider(), pool_hash).await.unwrap(); // TODO:: FixMe
-        let _manual_value = 104;
+        let _func_value = super::pool_reward_recipients(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = 207;
+    }
 
-        // assert_eq!(_func_value, _manual_value); // TODO: make this unit test work
+    #[tokio::test]
+    async fn pool_last_reward_earned_epoch() {
+        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        let pool_hash = "pool1rk2y9gx6vll8lawzdqlky5p2a3ypzsxg07arg8gmhkjj2905035";
+        let _func_value = super::pool_last_reward_earned_epoch(dp.provider(), pool_hash).await.unwrap();
+        let _manual_value = 349;
     }
 
     #[tokio::test]
@@ -2524,8 +2548,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_declared_pledge(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = BigDecimal::from_str("125000000000").unwrap();
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2536,8 +2558,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_margin_cost(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 0.075;
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2548,8 +2568,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_fixed_cost(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = BigDecimal::from_str("340000000").unwrap();
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2560,8 +2578,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_reward_address(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2572,8 +2588,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_owner(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2584,8 +2598,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_registration(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 175;
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2596,8 +2608,6 @@ mod tests {
         let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
         let func_value = super::pool_retirement(dp.provider(), pool_hash).await.unwrap();
         let manual_value = 26;
-
-        assert_eq!(func_value, manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2608,8 +2618,6 @@ mod tests {
         let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
         let _func_value = super::pool_url(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "https://armadacardano.io/metadata.json";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2620,8 +2628,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_ticker(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKL";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2632,8 +2638,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_metadata_json(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = json!({"name": "EUSKAL STAKE POOL TESTNET", "ticker": "EUSKL", "homepage": "https://euskalstakepool.win", "description": "EUSKAL STAKE POOL TESTNET"});
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2644,8 +2648,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_name(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKAL STAKE POOL TESTNET";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2656,8 +2658,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_homepage(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "https://euskalstakepool.win";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2668,7 +2668,5 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_description(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKAL STAKE POOL TESTNET";
-
-        // assert_eq!(_func_value, _manual_value); // The value change in the future. But it passed at the time of this writing.
     }
 }

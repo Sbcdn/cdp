@@ -34,9 +34,11 @@ pub enum Scriptpurposetype {
     #[db_rename = "reward"]
     Reward,
 }
-#[derive(Debug, Clone, DbEnum, QueryId)]
-#[ExistingTypePath = "crate::dbsync::schema::sql_types::Rewardtype"]
-pub enum Rewardtype {
+
+/// Represents SQL enum
+#[derive(Clone, Copy, Debug, DbEnum, PartialEq, Eq)] // Debug, Clone, QueryId
+#[ExistingTypePath = "crate::dbsync::schema::sql_types::RewardType"]
+pub enum RewardType {
     #[db_rename = "leader"]
     Leader,
     #[db_rename = "member"]
@@ -48,6 +50,7 @@ pub enum Rewardtype {
     #[db_rename = "refund"]
     Refund,
 }
+
 #[derive(Debug, Clone, DbEnum, QueryId, serde::Serialize, serde::Deserialize)]
 #[ExistingTypePath = "crate::dbsync::schema::sql_types::Scripttype"]
 pub enum Scripttype {
@@ -640,7 +643,7 @@ pub struct ReservedPoolTicker {
 pub struct Reward {
     pub id: i64,
     pub addr_id: i64,
-    pub type_: Rewardtype,
+    pub type_: RewardType,
     pub amount: BigDecimal,
     pub earned_epoch: i64,
     pub spendable_epoch: i64,

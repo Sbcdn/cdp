@@ -40,3 +40,5 @@ impl From<cardano_serialization_lib::error::JsError> for DataProviderError {
         DataProviderError::Custom(err.to_string())
     }
 }
+
+impl rweb::reject::Reject for DataProviderError {}

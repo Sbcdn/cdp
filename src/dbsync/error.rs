@@ -44,3 +44,5 @@ impl From<cardano_serialization_lib::error::DeserializeError> for DataProviderDB
         DataProviderDBSyncError::Custom(err.to_string())
     }
 }
+
+impl rweb::reject::Reject for DataProviderDBSyncError {}

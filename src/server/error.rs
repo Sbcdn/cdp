@@ -1,5 +1,5 @@
 use rweb::warp::{http::StatusCode, Rejection, Reply};
-use std::convert::Infallible;
+use std::{convert::Infallible, env::VarError};
 use thiserror::Error;
 
 use super::models::ErrorResponse;

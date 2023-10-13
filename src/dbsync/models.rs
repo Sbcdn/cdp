@@ -35,8 +35,9 @@ pub enum Scriptpurposetype {
     Reward,
 }
 
+/// Represents SQL enum
 #[derive(Clone, Copy, Debug, DbEnum, PartialEq, Eq)] // Debug, Clone, QueryId
-#[ExistingTypePath = "crate::dbsync::schema::sql_types::RewardTypeEnum"]
+#[ExistingTypePath = "crate::dbsync::schema::sql_types::RewardType"]
 pub enum RewardType {
     #[db_rename = "leader"]
     Leader,

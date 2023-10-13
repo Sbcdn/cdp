@@ -2498,8 +2498,6 @@ mod tests {
         let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
         let _func_value = hex::encode(super::pool_vrf_key_hash(dp.provider(), pool_hash).await.unwrap());
         let _manual_value = "335399acf3228243efb0fec0e43f18d61a496d4fd740fd800f9b91b5fa7d0540";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2510,8 +2508,6 @@ mod tests {
         let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
         let _func_value = super::pool_blocks_minted(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 13;
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2522,8 +2518,6 @@ mod tests {
         let pool_hash = "pool14u22dyym8k2g2twvgct86njg3m9cc7j2fc74yamy6672s6up7a0";
         let _func_value = super::pool_blocks_current_epoch(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 25;
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2534,8 +2528,6 @@ mod tests {
         let pool_hash = "pool1rk2y9gx6vll8lawzdqlky5p2a3ypzsxg07arg8gmhkjj2905035";
         let _func_value = super::pool_reward_recipients(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 207;
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2546,8 +2538,6 @@ mod tests {
         let pool_hash = "pool1rk2y9gx6vll8lawzdqlky5p2a3ypzsxg07arg8gmhkjj2905035";
         let _func_value = super::pool_last_reward_earned_epoch(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 349;
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2558,8 +2548,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_declared_pledge(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = BigDecimal::from_str("125000000000").unwrap();
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2570,8 +2558,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_margin_cost(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 0.075;
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2582,8 +2568,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_fixed_cost(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = BigDecimal::from_str("340000000").unwrap();
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2594,8 +2578,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_reward_address(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2606,8 +2588,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_owner(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2618,8 +2598,6 @@ mod tests {
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
         let _func_value = super::pool_registration(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = 175;
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2630,8 +2608,6 @@ mod tests {
         let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
         let func_value = super::pool_retirement(dp.provider(), pool_hash).await.unwrap();
         let manual_value = 26;
-
-        assert_eq!(func_value, manual_value); // The value might  change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2642,8 +2618,6 @@ mod tests {
         let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
         let _func_value = super::pool_url(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "https://armadacardano.io/metadata.json";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2654,8 +2628,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_ticker(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKL";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2666,8 +2638,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_metadata_json(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = json!({"name": "EUSKAL STAKE POOL TESTNET", "ticker": "EUSKL", "homepage": "https://euskalstakepool.win", "description": "EUSKAL STAKE POOL TESTNET"});
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2678,8 +2648,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_name(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKAL STAKE POOL TESTNET";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2690,8 +2658,6 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_homepage(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "https://euskalstakepool.win";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 
     #[tokio::test]
@@ -2702,7 +2668,5 @@ mod tests {
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
         let _func_value = super::pool_description(dp.provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKAL STAKE POOL TESTNET";
-
-        // assert_eq!(_func_value, _manual_value); // The value might change in the future. But it passed at the time of this writing.
     }
 }

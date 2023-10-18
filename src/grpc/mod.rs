@@ -127,7 +127,6 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                 }
             }
         };
-        println!("Output: {output:?}");
         cache.cache_set(cache_key, encode_prost_message(&output));
         Ok(Response::new(output))
     }

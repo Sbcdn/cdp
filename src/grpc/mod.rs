@@ -12,6 +12,10 @@ use aya_cardano::{
 };
 use cardano_serialization_lib::crypto::Ed25519KeyHash;
 use cardano_serialization_lib::AssetName;
+
+use cached::{TimedCache, Cached};
+use futures::lock::Mutex;
+
 pub mod aya_cardano {
     include!("../proto/aya_cardano.rs");
     //tonic::include_proto!("aya_cardano"); // The string specified here must match the proto package name
@@ -21,8 +25,23 @@ use base64::{
     engine::{self, general_purpose},
     Engine as _,
 };
-#[derive(Debug, Default)]
-pub struct AyaCardanoRPCServer {}
+#[derive(Debug)]
+pub struct AyaCardanoRPCServer {
+    short_cache: Mutex<TimedCache<Vec<u8>,Vec<u8>>>,
+    long_cache: Mutex<TimedCache<Vec<u8>,Vec<u8>>>,
+}
+impl Default for AyaCardanoRPCServer {
+    fn default() -> Self {
+        AyaCardanoRPCServer {
+            short_cache: Mutex::new(TimedCache::with_lifespan(60)),
+            long_cache: Mutex::new(TimedCache::with_lifespan(300)),
+        }
+    }
+}    
+
+fn encode_prost_message<M: prost::Message>(message: &M) -> Vec<u8> {
+    message.encode_to_vec()
+}
 
 #[tonic::async_trait]
 impl ChainFollowerRequestService for AyaCardanoRPCServer {
@@ -38,6 +57,19 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
 
         //select * from block b where b.block_no = (select min(block_no-1) from block b where b.epoch_no = 209) or b.block_no = (select max(block_no) from block b where b.epoch_no = 209) order by block_no DESC;
         let rtype = request.into_inner();
+
+        // Check cache hit
+        let cache_key = encode_prost_message(&rtype);
+        let mut cache = self.short_cache.lock().await;
+        match cache.cache_get(&cache_key) {
+            Some(cached) => {
+                log::debug!("CACHE: Some found {:?}", cached);
+                let output : EventResponse = prost::Message::decode(cached.as_slice()).unwrap();
+                return Ok(Response::new(output))
+            },
+            None => log::debug!("CACHE: None found for key: {:?}", cache_key)
+        }
+
         let output = match rtype.r#type() {
             EpochRequestType::LatestEpochChange => {
                 let current_epoch = dp.current_epoch().await.unwrap();
@@ -96,6 +128,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
             }
         };
         println!("Output: {output:?}");
+        cache.cache_set(cache_key, encode_prost_message(&output));
         Ok(Response::new(output))
     }
 
@@ -131,6 +164,19 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
     ) -> Result<Response<EventResponse>, Status> {
         println!("Got a request: {request:?}");
         let vr = request.into_inner();
+
+        // Check cache hit
+        let cache_key = encode_prost_message(&vr);
+        let mut cache = self.long_cache.lock().await;
+        match cache.cache_get(&cache_key) {
+            Some(cached) => {
+                log::debug!("CACHE: Some found {:?}", cached);
+                let reply : EventResponse = prost::Message::decode(cached.as_slice()).unwrap();
+                return Ok(Response::new(reply))
+            },
+            None => log::debug!("CACHE: None found for key: {:?}", cache_key)
+        }
+
         let datums = find_registration_event(&vr.txhash).await;
 
         for d in datums {
@@ -158,6 +204,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                     )),
                 };
 
+                cache.cache_set(cache_key, encode_prost_message(&reply));
                 return Ok(Response::new(reply)); // Send back our formatted greeting
             }
         }
@@ -169,6 +216,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
             )),
         };
 
+        cache.cache_set(cache_key, encode_prost_message(&reply));
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
@@ -178,6 +226,19 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
     ) -> Result<Response<EventResponse>, Status> {
         println!("Got a request: {request:?}");
         let vr = request.into_inner();
+
+        // Check cache hit
+        let cache_key = encode_prost_message(&vr);
+        let mut cache = self.long_cache.lock().await;
+        match cache.cache_get(&cache_key) {
+            Some(cached) => {
+                log::debug!("CACHE: Some found {:?}", cached);
+                let reply : EventResponse = prost::Message::decode(cached.as_slice()).unwrap();
+                return Ok(Response::new(reply))
+            },
+            None => log::debug!("CACHE: None found for key: {:?}", cache_key)
+        }
+
         let datums = find_registration_event(&vr.txhash).await;
         for d in datums {
             if let Ok(datum) = restore_wmreg_datum(&d.bytes) {
@@ -202,6 +263,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                     )),
                 };
 
+                cache.cache_set(cache_key, encode_prost_message(&reply));
                 return Ok(Response::new(reply)); // Send back our formatted greeting
             }
         }
@@ -212,6 +274,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
             )),
         };
 
+        cache.cache_set(cache_key, encode_prost_message(&reply));
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 

@@ -24,7 +24,7 @@ pub trait CardanoDataProvider {
         stake_addr: &str,
     ) -> Result<TransactionUnspentOutputs, DataProviderError>;
     /// returns all TransactionUnspentOutputs of an address
-    async fn script_utxos(
+    async fn get_address_utxos(
         &self,
         addr: &str,
     ) -> Result<TransactionUnspentOutputs, DataProviderError>;
@@ -42,7 +42,7 @@ pub trait CardanoDataProvider {
         stake_address_in: &str,
     ) -> Result<Address, DataProviderError>;
     /// returns Utxo of a certain datumhash on an address
-    async fn utxo_by_dataumhash(
+    async fn utxo_by_datumhash(
         &self,
         addr: &str,
         datumhash: &Vec<u8>,
@@ -138,7 +138,7 @@ pub trait CardanoDataProvider {
     async fn pool_vrf_key_hash(
         &self,
         pool_hash: &str,
-    ) -> Result<Vec<u8>, DataProviderError>;
+    ) -> Result<String, DataProviderError>;
 
     async fn pool_blocks_minted(
         &self,
@@ -174,11 +174,6 @@ pub trait CardanoDataProvider {
         &self,
         pool_hash: &str,
     ) -> Result<BigDecimal, DataProviderError>;
-
-    async fn pool_reward_address(
-        &self,
-        pool_hash: &str,
-    ) -> Result<String, DataProviderError>;
 
     async fn pool_owner(
         &self,
@@ -251,11 +246,11 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         self.provider().wallet_utxos(stake_addr).await
     }
 
-    async fn script_utxos(
+    async fn get_address_utxos(
         &self,
         addr: &str,
     ) -> Result<TransactionUnspentOutputs, DataProviderError> {
-        self.provider().script_utxos(addr).await
+        self.provider().get_address_utxos(addr).await
     }
 
     async fn asset_utxos_on_addr(
@@ -290,12 +285,12 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
     }
 
     /// get all utxos of an address
-    async fn utxo_by_dataumhash(
+    async fn utxo_by_datumhash(
         &self,
         addr: &str,
         datumhash: &Vec<u8>,
     ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
-        self.provider().utxo_by_dataumhash(addr, datumhash).await
+        self.provider().utxo_by_datumhash(addr, datumhash).await
     }
     async fn utxo_tokens(
         &self,
@@ -420,20 +415,20 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         epoch: i32,
         stake_addr: &str,
     ) -> Result<BigDecimal, DataProviderError> {
-        dbg!(self.provider().retrieve_staked_amount(epoch, stake_addr).await)
+        self.provider().retrieve_staked_amount(epoch, stake_addr).await
     }
 
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
     ) -> Result<Vec<RewardView>, DataProviderError> {
-        dbg!(self.provider().retrieve_generated_rewards(stake_addr).await)
+        self.provider().retrieve_generated_rewards(stake_addr).await
     }
 
     async fn pool_vrf_key_hash (
         &self,
         pool_hash: &str,
-    ) -> Result<Vec<u8>, DataProviderError> {
+    ) -> Result<String, DataProviderError> {
         self.provider().pool_vrf_key_hash(pool_hash).await
     }
 
@@ -484,13 +479,6 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         pool_hash: &str,
     ) -> Result<BigDecimal, DataProviderError> {
         self.provider().pool_fixed_cost(pool_hash).await
-    }
-
-    async fn pool_reward_address(
-        &self,
-        pool_hash: &str,
-    ) -> Result<String, DataProviderError> {
-        self.provider().pool_reward_address(pool_hash).await
     }
 
     async fn pool_owner(

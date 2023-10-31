@@ -10,8 +10,13 @@ license = "LICENSE.md"
 readme = "README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
 
-
 [dependencies]
+surf = "2.3.2"
+async-std = "1.12.0"
+mobc = "0.5.11"
+mobc-postgres = "0.5.0"
+hyper = "0.13"
+hyper-tls = "0.4.1"
 cardano-serialization-lib = "11.4.0"
 csl-common = { git = "https://github.com/drasil-blockchain/csl-common.git", branch = "main" }
 #cryptoxide = { version = "0.4.2", features = ["blake2"] }
@@ -52,7 +57,7 @@ blockfrost = "0.2.0"
 async-trait = "0.1.58"
 
 
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.33", features = ["full", "macros", "sync", "sync", "rt-multi-thread"] }
 tokio-stream = "0.1.6"
 futures = "0.3.21"
 warp = { version = "0.3", features = ["tls"] }
@@ -86,3 +91,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "cdp-server"
 path = "src/bin/server.rs"
+
+[dev-dependencies]
+wiremock = "0.5"
+lazy_static = "=1.4.0"

@@ -2,7 +2,7 @@ use super::error::DataProviderCarbError;
 use super::CarbProvider;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView, PoolInfo,
 };
 use crate::provider::error::DataProviderError;
 
@@ -200,13 +200,15 @@ pub fn retrieve_generated_rewards (
     Ok(vec![])
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_vrf_key_hash (
     bfp: &CarbProvider,
     pool_hash: &str,
-) -> Result<Vec<u8>, DataProviderError> {
+) -> Result<String, DataProviderError> {
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_blocks_minted (
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -214,6 +216,7 @@ pub fn pool_blocks_minted (
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_blocks_current_epoch(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -221,6 +224,7 @@ pub fn pool_blocks_current_epoch(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_reward_recipients(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -228,6 +232,7 @@ pub fn pool_reward_recipients(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_last_reward_earned_epoch(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -235,6 +240,7 @@ pub fn pool_last_reward_earned_epoch(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_declared_pledge(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -242,6 +248,7 @@ pub fn pool_declared_pledge(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_margin_cost (
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -249,6 +256,7 @@ pub fn pool_margin_cost (
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_fixed_cost(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -256,6 +264,7 @@ pub fn pool_fixed_cost(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_reward_address(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -263,6 +272,7 @@ pub fn pool_reward_address(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_owner(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -270,6 +280,7 @@ pub fn pool_owner(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_registration(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -277,6 +288,7 @@ pub fn pool_registration(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_retirement(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -284,6 +296,7 @@ pub fn pool_retirement(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_url(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -291,6 +304,7 @@ pub fn pool_url(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_ticker(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -298,6 +312,7 @@ pub fn pool_ticker(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_metadata_json(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -305,6 +320,7 @@ pub fn pool_metadata_json(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_name(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -312,6 +328,7 @@ pub fn pool_name(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_homepage(
     bfp: &CarbProvider,
     pool_hash: &str,
@@ -319,9 +336,17 @@ pub fn pool_homepage(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_description(
     bfp: &CarbProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderError> {
+    todo!()
+}
+
+pub fn pool_info(
+    bfp: &CarbProvider,
+    pool_hash: &str,
+) -> Result<PoolInfo, DataProviderError> {
     todo!()
 }

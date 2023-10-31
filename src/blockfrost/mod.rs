@@ -1,6 +1,6 @@
 use crate::provider::error::DataProviderError;
 use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView, 
-    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView
+    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView, PoolInfo
 };
 
 use async_trait::async_trait;
@@ -269,13 +269,15 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::retrieve_generated_rewards(self, stake_addr)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_vrf_key_hash (
         &self,
         pool_hash: &str,
-    ) -> Result<Vec<u8>, DataProviderError> {
+    ) -> Result<String, DataProviderError> {
         Ok(api::pool_vrf_key_hash(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_blocks_minted (
         &self,
         pool_hash: &str,
@@ -283,6 +285,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_blocks_minted(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_blocks_current_epoch(
         &self,
         pool_hash: &str,
@@ -290,6 +293,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_blocks_current_epoch(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_reward_recipients(
         &self,
         pool_hash: &str,
@@ -297,6 +301,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_reward_recipients(self, pool_hash)?)
     }
     
+    #[cfg(feature = "granular_pool")]
     async fn pool_last_reward_earned_epoch(
         &self,
         pool_hash: &str,
@@ -304,6 +309,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_last_reward_earned_epoch(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_declared_pledge(
         &self,
         pool_hash: &str,
@@ -311,6 +317,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_declared_pledge(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_margin_cost(
         &self,
         pool_hash: &str,
@@ -318,6 +325,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_margin_cost(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_fixed_cost(
         &self,
         pool_hash: &str,
@@ -325,6 +333,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_fixed_cost(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_reward_address(
         &self,
         pool_hash: &str,
@@ -332,6 +341,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_reward_address(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_owner(
         &self,
         pool_hash: &str,
@@ -339,6 +349,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_owner(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_registration(
         &self,
         pool_hash: &str,
@@ -346,6 +357,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_registration(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_retirement(
         &self,
         pool_hash: &str,
@@ -353,6 +365,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_retirement(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_url(
         &self,
         pool_hash: &str,
@@ -360,6 +373,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_url(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_ticker(
         &self,
         pool_hash: &str,
@@ -367,6 +381,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_ticker(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_metadata_json(
         &self,
         pool_hash: &str,
@@ -374,6 +389,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_metadata_json(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_name(
         &self,
         pool_hash: &str,
@@ -381,6 +397,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_name(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_homepage(
         &self,
         pool_hash: &str,
@@ -388,10 +405,18 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         Ok(api::pool_homepage(self, pool_hash)?)
     }
 
+    #[cfg(feature = "granular_pool")]
     async fn pool_description(
         &self,
         pool_hash: &str,
     ) -> Result<String, DataProviderError> {
         Ok(api::pool_description(self, pool_hash)?)
+    }
+
+    async fn pool_info(
+        &self,
+        pool_hash: &str,
+    ) -> Result<PoolInfo, DataProviderError> {
+        Ok(api::pool_info(self, pool_hash)?)
     }
 }

@@ -4,11 +4,13 @@ use bigdecimal::{BigDecimal, ToPrimitive};
 use cardano_serialization_lib::{crypto::ScriptHash, utils::BigNum, AssetName};
 use dcslc::{make_fingerprint, TransactionUnspentOutput};
 use diesel::Queryable;
+use serde::Serialize;
+use serde::Deserialize;
 
 pub type Token = (ScriptHash, AssetName, BigNum);
 pub type Tokens = Vec<Token>;
 
-#[derive(Queryable, serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Clone)]
 pub struct TokenInfoView {
     pub fingerprint: String,
     pub policy: String,
@@ -20,13 +22,13 @@ pub struct TokenInfoView {
     pub txhash: Option<String>,
 }
 
-#[derive(Queryable, serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Clone)]
 pub struct StakeDelegationView {
     pub stake_address: String,
     pub amount: BigDecimal,
 }
 
-#[derive(Queryable, serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Clone)]
 pub struct DelegationView {
     pub stake_address: String,
     pub amount: i64,
@@ -34,7 +36,7 @@ pub struct DelegationView {
     pub active_epoch_no: i64,
 }
 
-#[derive(Queryable, serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Clone)]
 pub struct HoldingWalletView {
     pub stake_address: String,
     pub amount: u64,
@@ -43,7 +45,7 @@ pub struct HoldingWalletView {
     pub fingerprint: Option<String>,
 }
 
-#[derive(Queryable, serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Clone)]
 pub struct CardanoNativeAssetView {
     pub id: i64,
     pub policy: Vec<u8>,
@@ -52,7 +54,7 @@ pub struct CardanoNativeAssetView {
     pub quantity: BigDecimal,
 }
 
-#[derive(Queryable, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Queryable, Debug, Clone, Serialize, Deserialize)]
 pub struct StakeDeregistrationView {
     pub stake_address: String,
     pub tx_hash: Vec<u8>,
@@ -60,7 +62,7 @@ pub struct StakeDeregistrationView {
     pub epoch: i32,
 }
 
-#[derive(Queryable, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Queryable, Debug, Clone, Serialize, Deserialize)]
 pub struct StakeRegistrationView {
     pub stake_address: String,
     pub tx_hash: Vec<u8>,
@@ -77,7 +79,7 @@ pub struct CDPDatum {
     pub addr_has_script: bool,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionView {
     pub hash: String,
     pub block: String,
@@ -96,7 +98,7 @@ pub struct TransactionView {
     pub cbor: Option<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TxHistoryListAssetView {
     fingerprint: String,
     amount: u64,
@@ -117,7 +119,7 @@ impl TxHistoryListAssetView {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, QueryableByName)]
+#[derive(Serialize, Deserialize, Debug, QueryableByName)]
 pub struct TxHistoryListQuery {
     #[diesel(sql_type = diesel::sql_types::Bytea, column_name = hash, deserialize_as = Vec<u8>)]
     hash: Vec<u8>,
@@ -129,7 +131,7 @@ pub struct TxHistoryListQuery {
     value: Vec<BigDecimal>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, QueryableByName)]
+#[derive(Serialize, Deserialize, Debug, QueryableByName)]
 pub struct TxHistoryListQueryLight {
     #[diesel(sql_type = diesel::sql_types::Bytea, column_name = hash, deserialize_as = Vec<u8>)]
     pub hash: Vec<u8>,
@@ -137,13 +139,13 @@ pub struct TxHistoryListQueryLight {
     pub slot: i64,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TxHistoryListViewLight {
     pub hash: Vec<u8>,
     pub slot: i64,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TxHistoryListView {
     pub hash: String,
     pub slot: i64,
@@ -169,13 +171,13 @@ impl TxHistoryListView {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WithdrawalView {
     pub stake_address: String,
     pub amount: u64,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScriptView {
     pub hash: String,
     pub r#type: crate::dbsync::models::Scripttype,
@@ -183,7 +185,7 @@ pub struct ScriptView {
     pub bytes: Option<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UTxOView {
     pub hash: String,
     pub index: i32,
@@ -229,13 +231,13 @@ impl UTxOView {
         }
     }
 }
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ValueView {
     pub coin: u64,
     pub multiasset: Option<Vec<AssetHandle>>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AssetHandle {
     pub fingerprint: Option<String>,
     pub policy: Option<String>,
@@ -303,16 +305,36 @@ impl PartialEq for AssetHandle {
     }
 }
 
-#[derive(Queryable, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Queryable, Debug, Clone, Serialize, Deserialize)]
 pub struct PoolView {
     pub pool_hash: String,
     pub ticker: String,
     pub json: serde_json::Value,
 }
 
-#[derive(Queryable, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Queryable, Debug, Clone, Serialize, Deserialize)]
 pub struct RewardView {
     pub amount: u64,
     pub earned_epoch: i64,
     pub spendable_epoch: i64, 
+}
+
+#[derive(Queryable, Debug, Serialize)]
+pub struct PoolInfo {
+    pub vrf_key_hash: Option<String>,
+    pub blocks_minted: Option<i64>,
+    pub blocks_current_epoch: Option<i64>,
+    pub reward_recipients: Option<i64>,
+    pub last_reward_earned_epoch: Option<i64>,
+    pub declared_pledge: Option<BigDecimal>,
+    pub margin_cost: Option<f64>,
+    pub fixed_cost: Option<BigDecimal>,
+    pub owner: Option<String>,
+    pub registration: Option<i64>,
+    pub retirement: Option<i32>,
+    pub url: Option<String>,
+    pub ticker: Option<String>,
+    pub name: Option<String>,
+    pub homepage: Option<String>,
+    pub description: Option<String>,
 }

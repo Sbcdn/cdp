@@ -2147,30 +2147,32 @@ pub async fn pool_description(
 
 #[cfg(test)]
 mod tests {
-    use crate::{dbsync::DataProviderDBSyncError, provider::CardanoDataProvider};
+    use crate::{dbsync::DataProviderDBSyncError, provider::CardanoDataProvider, DataProvider, DBSyncProvider};
+    use crate::dbsync;
     use bigdecimal::BigDecimal;
     use itertools::Itertools;
     use serde_json::json;
     use std::str::FromStr;
 
+    fn data_provider() -> DataProvider<DBSyncProvider> {
+        let dp = DataProvider::new(DBSyncProvider::new(crate::Config {
+            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
+        }));
+        dp
+    }
+
     #[tokio::test]
     async fn test_tx_history() {
         let r = vec!["addr_test1qqt86eq9972q3qttj6ztje97llasktzfzvhmdccqjlqjaq2cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qy6q5t2","addr_test1qpg8ehvgj9zxrx59et72yjn2p02xwsm3l89jwj8ujcj63ujcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw23emu","addr_test1qqdp3cry5vc2gfjljctdu638tvkcqfx40fjunht9hrmru5zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qnaxxgs","addr_test1qr2mw080ujz0unmpn9lx5ftfuewc6htyr6v3a0svul2zgezcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qgryf7t","addr_test1qr7tqh7tsg4lut3jv6tsfwlv464m6knjjw90ugyz8uzgr6zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qt0jxzj","addr_test1qrscurjp292sxv24sepj7ghq4ydkkekzaz53zwfswcna6ljcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6q8pu3l5","addr_test1qqssrphse6qmp9h0ksu5vfmsx99tfl2lc6rhvy2spd5wr86cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw59j4j","addr_test1qqgagc0fy6nm0qe4h8zqxsg952tqjeg7l7j0agd0cx4u25zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qxvept2"];
 
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-        let t = dp.tx_history(&r, None).await.unwrap();
+        let t = data_provider().tx_history(&r, None).await.unwrap();
         println!("{t:?}");
     }
 
     #[tokio::test]
     async fn test_discover_transaction() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-        let t = crate::dbsync::discover_transaction(
-            dp.provider(),
+        let t = dbsync::discover_transaction(
+            data_provider().provider(),
             "1b07f1152e52ce0a9dbb561aa2e2d1750ca3a1a4141150a8bad342947a66a3a6",
         )
         .await;
@@ -2179,19 +2181,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_pools() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-        let t = crate::dbsync::get_pools(dp.provider()).await;
+        let t = dbsync::get_pools(data_provider().provider()).await;
         println!("{t:?}");
     }
 
     #[tokio::test]
     async fn test_epoch_nonce() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-        let t = crate::dbsync::epoch_nonce(dp.provider(), 205)
+        let t = dbsync::epoch_nonce(data_provider().provider(), 205)
             .await
             .unwrap();
         println!("Nonce: {}\nEntropy: {:?}", hex::encode(&t.0), t.1);
@@ -2199,11 +2195,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_nft() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-        let t = crate::dbsync::is_nft(
-            dp.provider(),
+        let t = dbsync::is_nft(
+            data_provider().provider(),
             &[
                 "asset1a0q0grruzd3dm2c9ev890zfaytty8tfcl4qt3a",
                 "asset1h3pg9m9arlwl4l8z3dwg3lwg54j70zqdrjhy88",
@@ -2218,11 +2211,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_supply() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-        let t = crate::dbsync::token_supply(
-            dp.provider(),
+        let t = dbsync::token_supply(
+            data_provider().provider(),
             "asset1m099azmatp3f3xehsu4sqvr45jzqafxmm0dra0",
         )
         .await
@@ -2235,23 +2225,19 @@ mod tests {
     // make projection accurate for higher epoch values.
     #[tokio::test]
     async fn reward_projection() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-
         let pool_hash = "pool1ayc7a29ray6yv4hn7ge72hpjafg9vvpmtscnq9v8r0zh7azas9c";
         let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh"; // stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh
         let current_epoch = 25;
 
         let func_value = super::personal_delegator_rewards_next_epoch(
-            dp.provider(),
+            data_provider().provider(),
             pool_hash,
             current_epoch,
             stake_addr,
         )
         .unwrap();
         let real_value =
-            super::earned_reward(dp.provider(), stake_addr, current_epoch as i64).unwrap();
+            super::earned_reward(data_provider().provider(), stake_addr, current_epoch as i64).unwrap();
 
         println!("correct_reward:   {}", real_value);
         println!("projected reward: {}", func_value);
@@ -2260,13 +2246,10 @@ mod tests {
 
     #[tokio::test]
     async fn retrieve_staked_amount() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let epoch = 275;
         let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh";
 
-        let func_value = super::retrieve_staked_amount(dp.provider(), epoch, stake_addr).unwrap();
+        let func_value = super::retrieve_staked_amount(data_provider().provider(), epoch, stake_addr).unwrap();
         let real_value = BigDecimal::from_str("10305915710").unwrap();
 
         assert_eq!(func_value, real_value);
@@ -2274,11 +2257,8 @@ mod tests {
 
     #[tokio::test]
     async fn mint_metadata() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let fingerprint_in = "asset1kngmwlxpfzc6pk027zvhsfpprp452gt3enhhxh";
-        let func_value = super::mint_metadata(dp.provider(), fingerprint_in).unwrap();
+        let func_value = super::mint_metadata(data_provider().provider(), fingerprint_in).unwrap();
         let real_value = super::TokenInfoView {
             fingerprint: "asset1kngmwlxpfzc6pk027zvhsfpprp452gt3enhhxh".to_string(),
             policy: "994cf4c18f5613ca49c275f63d464b6d95123bfa8985e82b24b5680b".to_string(),
@@ -2306,11 +2286,8 @@ mod tests {
     #[tokio::test]
     #[allow(non_snake_case)]
     async fn mint_metadata_bug_CMW_78() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let fingerprint_in = "asset162kdtwq54e5khz5y6naa55xqvk0zk5fpce8c76"; // contains non-UTF8 characters
-        let func_value = super::mint_metadata(dp.provider(), fingerprint_in).unwrap();
+        let func_value = super::mint_metadata(data_provider().provider(), fingerprint_in).unwrap();
         let real_value = super::TokenInfoView {
             fingerprint: "asset162kdtwq54e5khz5y6naa55xqvk0zk5fpce8c76".to_string(),
             policy: "8cbe56131657c928cee716677bd3eac885f9fcad10f9fa70e533f635".to_string(),
@@ -2336,12 +2313,8 @@ mod tests {
     #[tokio::test]
     #[allow(non_snake_case)]
     async fn get_txo_tokens_CMW_81() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-
         let utxo_tokens = super::get_txo_tokens(
-            dp.provider(), 
+            data_provider().provider(), 
             3312750, 
             0
         ).unwrap();
@@ -2356,7 +2329,7 @@ mod tests {
         println!("utxo_tokens[0]: {:?}", utxo_tokens[0]);
 
         let utxo_tokens = super::get_txo_tokens(
-            dp.provider(), 
+            data_provider().provider(), 
             3312750, 
             1
         ).unwrap();
@@ -2437,12 +2410,8 @@ mod tests {
     #[tokio::test]
     #[allow(non_snake_case)]
     async fn get_utxo_tokens_CMW_81() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
-
         let utxo_tokens = super::get_utxo_tokens(
-            dp.provider(), 
+            data_provider().provider(), 
             3317731, 
             0
         ).unwrap();
@@ -2466,7 +2435,7 @@ mod tests {
         assert_eq!(hex::encode(utxo_tokens[2].name.clone()), "7441726b");
 
         let utxo_tokens = super::get_utxo_tokens(
-            dp.provider(), 
+            data_provider().provider(), 
             3317731, 
             1
         ).unwrap();
@@ -2492,181 +2461,127 @@ mod tests {
 
     #[tokio::test]
     async fn pool_vrf_key_hash() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
-        let _func_value = hex::encode(super::pool_vrf_key_hash(dp.provider(), pool_hash).await.unwrap());
+        let _func_value = hex::encode(super::pool_vrf_key_hash(data_provider().provider(), pool_hash).await.unwrap());
         let _manual_value = "335399acf3228243efb0fec0e43f18d61a496d4fd740fd800f9b91b5fa7d0540";
     }
 
     #[tokio::test]
     async fn pool_blocks_minted() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1uh5xdjv70q5eyl5z644p23mvhd3dx0gwr8pjnlj9pwd3jgkvd0e";
-        let _func_value = super::pool_blocks_minted(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_blocks_minted(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = 13;
     }
 
     #[tokio::test]
     async fn pool_blocks_current_epoch() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool14u22dyym8k2g2twvgct86njg3m9cc7j2fc74yamy6672s6up7a0";
-        let _func_value = super::pool_blocks_current_epoch(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_blocks_current_epoch(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = 25;
     }
 
     #[tokio::test]
     async fn pool_reward_recipients() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1rk2y9gx6vll8lawzdqlky5p2a3ypzsxg07arg8gmhkjj2905035";
-        let _func_value = super::pool_reward_recipients(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_reward_recipients(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = 207;
     }
 
     #[tokio::test]
     async fn pool_last_reward_earned_epoch() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1rk2y9gx6vll8lawzdqlky5p2a3ypzsxg07arg8gmhkjj2905035";
-        let _func_value = super::pool_last_reward_earned_epoch(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_last_reward_earned_epoch(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = 349;
     }
 
     #[tokio::test]
     async fn pool_declared_pledge() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
-        let _func_value = super::pool_declared_pledge(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_declared_pledge(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = BigDecimal::from_str("125000000000").unwrap();
     }
 
     #[tokio::test]
     async fn pool_margin_cost() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
-        let _func_value = super::pool_margin_cost(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_margin_cost(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = 0.075;
     }
 
     #[tokio::test]
     async fn pool_fixed_cost() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
-        let _func_value = super::pool_fixed_cost(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_fixed_cost(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = BigDecimal::from_str("340000000").unwrap();
     }
 
     #[tokio::test]
     async fn pool_reward_address() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
-        let _func_value = super::pool_reward_address(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_reward_address(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
     }
 
     #[tokio::test]
     async fn pool_owner() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
-        let _func_value = super::pool_owner(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_owner(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = "stake_test1uz5ah77y8xvnxs6cyp979hg7fhxezjw39jfrpardqymnz7sg7ea8y";
     }
 
     #[tokio::test]
     async fn pool_registration() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1vezalga3ge0mt0xf4txz66ctufk6nrmemhhpshwkhedk5jf0stw";
-        let _func_value = super::pool_registration(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_registration(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = 175;
     }
 
     #[tokio::test]
     async fn pool_retirement() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
-        let func_value = super::pool_retirement(dp.provider(), pool_hash).await.unwrap();
+        let func_value = super::pool_retirement(data_provider().provider(), pool_hash).await.unwrap();
         let manual_value = 26;
     }
 
     #[tokio::test]
     async fn pool_url() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool17hsjytkcntlh6py4gnmk4695cux28tpcxrggs9ln97mvvtplr2m";
-        let _func_value = super::pool_url(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_url(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = "https://armadacardano.io/metadata.json";
     }
 
     #[tokio::test]
     async fn pool_ticker() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
-        let _func_value = super::pool_ticker(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_ticker(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKL";
     }
 
     #[tokio::test]
     async fn pool_metadata_json() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
-        let _func_value = super::pool_metadata_json(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_metadata_json(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = json!({"name": "EUSKAL STAKE POOL TESTNET", "ticker": "EUSKL", "homepage": "https://euskalstakepool.win", "description": "EUSKAL STAKE POOL TESTNET"});
     }
 
     #[tokio::test]
     async fn pool_name() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
-        let _func_value = super::pool_name(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_name(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKAL STAKE POOL TESTNET";
     }
 
     #[tokio::test]
     async fn pool_homepage() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
-        let _func_value = super::pool_homepage(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_homepage(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = "https://euskalstakepool.win";
     }
 
     #[tokio::test]
     async fn pool_description() {
-        let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: dotenv::var("DBSYNC_DB_URL").unwrap(),
-        }));
         let pool_hash = "pool1l5u4zh84na80xr56d342d32rsdw62qycwaw97hy9wwsc6axdwla";
-        let _func_value = super::pool_description(dp.provider(), pool_hash).await.unwrap();
+        let _func_value = super::pool_description(data_provider().provider(), pool_hash).await.unwrap();
         let _manual_value = "EUSKAL STAKE POOL TESTNET";
     }
 }

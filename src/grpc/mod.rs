@@ -13,7 +13,7 @@ use aya_cardano::{
 use cardano_serialization_lib::crypto::Ed25519KeyHash;
 use cardano_serialization_lib::AssetName;
 
-use cached::{TimedCache, Cached};
+use cached::{Cached, SizedCache};
 use futures::lock::Mutex;
 
 pub mod aya_cardano {
@@ -27,17 +27,15 @@ use base64::{
 };
 #[derive(Debug)]
 pub struct AyaCardanoRPCServer {
-    short_cache: Mutex<TimedCache<Vec<u8>,Vec<u8>>>,
-    long_cache: Mutex<TimedCache<Vec<u8>,Vec<u8>>>,
+    sized_cache: Mutex<SizedCache<Vec<u8>,Vec<u8>>>,
 }
 impl Default for AyaCardanoRPCServer {
     fn default() -> Self {
         AyaCardanoRPCServer {
-            short_cache: Mutex::new(TimedCache::with_lifespan(60)),
-            long_cache: Mutex::new(TimedCache::with_lifespan(300)),
+            sized_cache: Mutex::new(SizedCache::with_size(50)),
         }
     }
-}    
+}
 
 fn encode_prost_message<M: prost::Message>(message: &M) -> Vec<u8> {
     message.encode_to_vec()
@@ -60,7 +58,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
 
         // Check cache hit
         let cache_key = encode_prost_message(&rtype);
-        let mut cache = self.short_cache.lock().await;
+        let mut cache = self.sized_cache.lock().await;
         match cache.cache_get(&cache_key) {
             Some(cached) => {
                 log::debug!("CACHE: Some found {:?}", cached);
@@ -166,11 +164,11 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
 
         // Check cache hit
         let cache_key = encode_prost_message(&vr);
-        let mut cache = self.long_cache.lock().await;
+        let mut cache = self.sized_cache.lock().await;
         match cache.cache_get(&cache_key) {
             Some(cached) => {
                 log::debug!("CACHE: Some found {:?}", cached);
-                let reply : EventResponse = prost::Message::decode(cached.as_slice()).unwrap();
+                let reply : EventResponse = prost::Message::decode(cached.as_slice()).map_err(|e| Status::internal(e.to_string()))?;
                 return Ok(Response::new(reply))
             },
             None => log::debug!("CACHE: None found for key: {:?}", cache_key)
@@ -228,7 +226,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
 
         // Check cache hit
         let cache_key = encode_prost_message(&vr);
-        let mut cache = self.long_cache.lock().await;
+        let mut cache = self.sized_cache.lock().await;
         match cache.cache_get(&cache_key) {
             Some(cached) => {
                 log::debug!("CACHE: Some found {:?}", cached);

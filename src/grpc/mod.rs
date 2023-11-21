@@ -31,8 +31,9 @@ pub struct AyaCardanoRPCServer {
 }
 impl Default for AyaCardanoRPCServer {
     fn default() -> Self {
+        let cache_size = std::env::var("GRPC_CACHE_SIZE").unwrap().parse::<usize>().unwrap();
         AyaCardanoRPCServer {
-            sized_cache: Mutex::new(SizedCache::with_size(50)),
+            sized_cache: Mutex::new(SizedCache::with_size(cache_size)),
         }
     }
 }

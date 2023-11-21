@@ -201,6 +201,7 @@ impl ConfigRoot {
             appconfigs::Config::None => {}
         }
         std::env::set_var("DBSYNC_URL", &self.connectivity.dbsync_url);
+        std::env::set_var("GRPC_CACHE_SIZE", &self.connectivity.grpc_cache_size.to_string());
         std::env::set_var("TX_SUBMIT_ENDPOINT1", &self.connectivity.submit_endpoint_1);
         std::env::set_var("TX_SUBMIT_ENDPOINT2", &self.connectivity.submit_endpoint_2);
         std::env::set_var("TX_SUBMIT_ENDPOINT3", &self.connectivity.submit_endpoint_3);
@@ -217,6 +218,7 @@ mod connectivity {
         pub submit_endpoint_1: String,
         pub submit_endpoint_2: String,
         pub submit_endpoint_3: String,
+        pub grpc_cache_size: usize,
         pub protocol_parameter_path: String,
         pub cert_private_key: Option<String>,
         pub cert_pub_key: String,

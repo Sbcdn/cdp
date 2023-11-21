@@ -3,6 +3,7 @@ None = {}
 
 [connectivity]
 dbsync_url = "postgres://user:password@localhost:5432/testnet"
+grpc_cache_size  = 50
 submit_endpoint_1 = "http://localhost:8090/api/submit/tx"
 submit_endpoint_2 = ""
 submit_endpoint_3 = ""

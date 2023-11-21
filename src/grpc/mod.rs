@@ -12,6 +12,10 @@ use aya_cardano::{
 };
 use cardano_serialization_lib::crypto::Ed25519KeyHash;
 use cardano_serialization_lib::AssetName;
+
+use cached::{Cached, SizedCache};
+use futures::lock::Mutex;
+
 pub mod aya_cardano {
     include!("../proto/aya_cardano.rs");
     //tonic::include_proto!("aya_cardano"); // The string specified here must match the proto package name
@@ -21,8 +25,22 @@ use base64::{
     engine::{self, general_purpose},
     Engine as _,
 };
-#[derive(Debug, Default)]
-pub struct AyaCardanoRPCServer {}
+#[derive(Debug)]
+pub struct AyaCardanoRPCServer {
+    sized_cache: Mutex<SizedCache<Vec<u8>,Vec<u8>>>,
+}
+impl Default for AyaCardanoRPCServer {
+    fn default() -> Self {
+        let cache_size = std::env::var("GRPC_CACHE_SIZE").unwrap().parse::<usize>().unwrap();
+        AyaCardanoRPCServer {
+            sized_cache: Mutex::new(SizedCache::with_size(cache_size)),
+        }
+    }
+}
+
+fn encode_prost_message<M: prost::Message>(message: &M) -> Vec<u8> {
+    message.encode_to_vec()
+}
 
 #[tonic::async_trait]
 impl ChainFollowerRequestService for AyaCardanoRPCServer {
@@ -30,21 +48,34 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<EpochRequest>,
     ) -> Result<Response<EventResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-            db_path: std::env::var("DBSYNC_URL").unwrap(),
+            db_path: std::env::var("DBSYNC_URL").map_err(|e| Status::internal(e.to_string()))?,
         }));
 
         //select * from block b where b.block_no = (select min(block_no-1) from block b where b.epoch_no = 209) or b.block_no = (select max(block_no) from block b where b.epoch_no = 209) order by block_no DESC;
         let rtype = request.into_inner();
+
+        // Check cache hit
+        let cache_key = encode_prost_message(&rtype);
+        let mut cache = self.sized_cache.lock().await;
+        match cache.cache_get(&cache_key) {
+            Some(cached) => {
+                log::debug!("CACHE: Some found {:?}", cached);
+                let output : EventResponse = prost::Message::decode(cached.as_slice()).map_err(|e| Status::internal(e.to_string()))?;
+                return Ok(Response::new(output))
+            },
+            None => log::debug!("CACHE: None found for key: {:?}", cache_key)
+        }
+
         let output = match rtype.r#type() {
             EpochRequestType::LatestEpochChange => {
-                let current_epoch = dp.current_epoch().await.unwrap();
-                println!("Current epoch: {current_epoch}");
+                let current_epoch = dp.current_epoch().await.map_err(|e| Status::internal(e.to_string()))?;
+                log::debug!("Current epoch: {current_epoch}");
                 let resp = epoch_change(dp.provider(), Some(current_epoch))
                     .await
-                    .unwrap();
+                    .map_err(|e| Status::internal(e.to_string()))?;
                 EventResponse {
                     message_type: EventResponseType::EpochChangeEvent.into(),
                     message: Some(Message::EpochChange(ProtoEpochChangeResponse {
@@ -64,7 +95,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                 }
             }
             EpochRequestType::CurrentEpoch => {
-                let resp = dp.current_epoch().await.unwrap();
+                let resp = dp.current_epoch().await.map_err(|e| Status::internal(e.to_string()))?;
                 EventResponse {
                     message_type: EventResponseType::EpochChangeEvent.into(),
                     message: Some(Message::CurrentEpoch(CurrentEpochResponse {
@@ -75,7 +106,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
             EpochRequestType::SpecificEpochChange => {
                 let resp = epoch_change(dp.provider(), Some(rtype.epoch))
                     .await
-                    .unwrap();
+                    .map_err(|e| Status::internal(e.to_string()))?;
                 EventResponse {
                     message_type: EventResponseType::EpochChangeEvent.into(),
                     message: Some(Message::EpochChange(ProtoEpochChangeResponse {
@@ -95,7 +126,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                 }
             }
         };
-        println!("Output: {output:?}");
+        cache.cache_set(cache_key, encode_prost_message(&output));
         Ok(Response::new(output))
     }
 
@@ -103,7 +134,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<ValidatorRequest>,
     ) -> Result<Response<StateResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let reply = StateResponse {
             r#type: StateResponseType::ValidatorStatusState.into(),
@@ -116,7 +147,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<StateResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let reply = StateResponse {
             r#type: StateResponseType::ValidatorStakeState.into(),
@@ -129,24 +160,37 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<ValidatorRequest>,
     ) -> Result<Response<EventResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
         let vr = request.into_inner();
+
+        // Check cache hit
+        let cache_key = encode_prost_message(&vr);
+        let mut cache = self.sized_cache.lock().await;
+        match cache.cache_get(&cache_key) {
+            Some(cached) => {
+                log::debug!("CACHE: Some found {:?}", cached);
+                let reply : EventResponse = prost::Message::decode(cached.as_slice()).map_err(|e| Status::internal(e.to_string()))?;
+                return Ok(Response::new(reply))
+            },
+            None => log::debug!("CACHE: None found for key: {:?}", cache_key)
+        }
+
         let datums = find_registration_event(&vr.txhash).await;
 
         for d in datums {
-            println!("Datum: {d:?}");
+            log::debug!("Datum: {d:?}");
             if let Ok(datum) = restore_wmreg_datum(&d.bytes) {
                 let reg_datum: aya_cardano::RegistrationDatum = datum.into_inner();
-                println!("Registration Datum: {:?}", reg_datum);
+                log::debug!("Registration Datum: {:?}", reg_datum);
                 let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-                    db_path: std::env::var("DBSYNC_URL").unwrap(),
+                    db_path: std::env::var("DBSYNC_URL").map_err(|e| Status::internal(e.to_string()))?,
                 }));
                 let reply = EventResponse {
                     message_type: EventResponseType::ValidatorRegistrationEvent.into(),
                     message: Some(Message::ValidatorRegistration(
                         aya_cardano::ValidatorRegistrationResponse {
                             tx_hash: vr.txhash.clone(),
-                            slot: get_tx_slot(dp.provider(), &vr.txhash).unwrap() as u64,
+                            slot: get_tx_slot(dp.provider(), &vr.txhash).map_err(|e| Status::internal(e.to_string()))? as u64,
                             operator_address: reg_datum.operator_address,
                             consensus_pub_key: reg_datum.consensus_pub_key,
                             merkle_tree_root: reg_datum.merkle_tree_root,
@@ -158,6 +202,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                     )),
                 };
 
+                cache.cache_set(cache_key, encode_prost_message(&reply));
                 return Ok(Response::new(reply)); // Send back our formatted greeting
             }
         }
@@ -169,6 +214,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
             )),
         };
 
+        cache.cache_set(cache_key, encode_prost_message(&reply));
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
@@ -176,21 +222,34 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<ValidatorRequest>,
     ) -> Result<Response<EventResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
         let vr = request.into_inner();
+
+        // Check cache hit
+        let cache_key = encode_prost_message(&vr);
+        let mut cache = self.sized_cache.lock().await;
+        match cache.cache_get(&cache_key) {
+            Some(cached) => {
+                log::debug!("CACHE: Some found {:?}", cached);
+                let reply : EventResponse = prost::Message::decode(cached.as_slice()).map_err(|e| Status::internal(e.to_string()))?;
+                return Ok(Response::new(reply))
+            },
+            None => log::debug!("CACHE: None found for key: {:?}", cache_key)
+        }
+
         let datums = find_registration_event(&vr.txhash).await;
         for d in datums {
             if let Ok(datum) = restore_wmreg_datum(&d.bytes) {
                 let reg_datum: aya_cardano::RegistrationDatum = datum.into_inner();
                 let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-                    db_path: std::env::var("DBSYNC_URL").unwrap(),
+                    db_path: std::env::var("DBSYNC_URL").map_err(|e| Status::internal(e.to_string()))?,
                 }));
                 let reply = EventResponse {
                     message_type: EventResponseType::ValidatorUnregistrationEvent.into(),
                     message: Some(Message::ValidatorRegistration(
                         aya_cardano::ValidatorRegistrationResponse {
                             tx_hash: vr.txhash.clone(),
-                            slot: get_tx_slot(dp.provider(), &vr.txhash).unwrap() as u64,
+                            slot: get_tx_slot(dp.provider(), &vr.txhash).map_err(|e| Status::internal(e.to_string()))? as u64,
                             operator_address: reg_datum.operator_address,
                             consensus_pub_key: reg_datum.consensus_pub_key,
                             merkle_tree_root: reg_datum.merkle_tree_root,
@@ -202,6 +261,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                     )),
                 };
 
+                cache.cache_set(cache_key, encode_prost_message(&reply));
                 return Ok(Response::new(reply)); // Send back our formatted greeting
             }
         }
@@ -212,6 +272,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
             )),
         };
 
+        cache.cache_set(cache_key, encode_prost_message(&reply));
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
 
@@ -219,7 +280,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<EventResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let reply = EventResponse {
             message_type: EventResponseType::DelegatorStakeEvent.into(),
@@ -233,7 +294,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<StateResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let reply = StateResponse {
             r#type: StateResponseType::DelegatorStakeState.into(),
@@ -246,7 +307,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<EventResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let reply = EventResponse {
             message_type: EventResponseType::DelegatorUnstakeEvent.into(),
@@ -260,7 +321,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<StateResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let reply = StateResponse {
             r#type: StateResponseType::DelegatorUnbondingState.into(),
@@ -273,7 +334,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
         &self,
         request: Request<StakeRequest>,
     ) -> Result<Response<EventResponse>, Status> {
-        println!("Got a request: {request:?}");
+        log::debug!("Got a request: {request:?}");
 
         let reply = EventResponse {
             message_type: EventResponseType::DelegatorUnbondingEvent.into(),

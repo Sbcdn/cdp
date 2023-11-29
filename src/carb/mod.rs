@@ -1,5 +1,5 @@
 use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView,
-    DelegationView, StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView
+    DelegationView, StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView, PoolView
 
 };
 use crate::provider::error::DataProviderError;
@@ -106,6 +106,14 @@ impl super::provider::CardanoDataProvider for CarbProvider {
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>
     {
         Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
+    }
+
+    async fn active_pools(
+        &self,
+        page: usize,
+    ) -> Result<Vec<PoolView>, DataProviderError>
+    {
+        Err(DataProviderError::CarbError(DataProviderCarbError::Custom("Not implemented".to_string())))
     }
 
     async fn find_datums_for_tx(

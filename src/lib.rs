@@ -12,5 +12,6 @@ pub mod server;
 extern crate diesel;
 
 pub use dbsync::{Config, DBSyncProvider};
+pub use crate::blockfrost::BlockfrostProvider;
 pub use provider::error::DataProviderError;
 pub use provider::DataProvider;

@@ -104,7 +104,7 @@ pub async fn serve(dbsync_url: Option<String>) -> Result<(), error::RESTError> {
     let mut m = openapi::SecurityRequirement::new();
     m.insert(
         Cow::from("apiKey"),
-        vec![Cow::from("http"), Cow::from("baerer")],
+        vec![Cow::from("http"), Cow::from("baerer")], // Bearer?
     );
     spec.security = vec![m];
 

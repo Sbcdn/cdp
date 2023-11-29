@@ -1,25 +1,19 @@
 use crate::provider::error::DataProviderError;
 use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView, 
-    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView
+    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView, PoolView
 };
 
 use async_trait::async_trait;
 use blockfrost::{load, BlockFrostApi};
 use bigdecimal::BigDecimal;
 
+use ::log::debug;
+
 pub mod api;
 pub mod error;
 pub mod models;
 
-pub struct Config {
-    pub url: String,
-    pub api_key: String,
-    pub ipfs_url: Option<String>,
-    pub ipfs_api_key: Option<String>,
-}
-
 pub struct BlockfrostProvider {
-    config: Config,
     api: BlockFrostApi,
 }
 
@@ -27,20 +21,23 @@ unsafe impl Send for BlockfrostProvider {}
 unsafe impl Sync for BlockfrostProvider {}
 
 impl BlockfrostProvider {
-    pub fn new(config: Config) -> Self {
-        let api = BlockfrostProvider::build_api(&config).unwrap();
-        BlockfrostProvider { config, api }
+    pub fn new() -> Self {
+        let api = BlockfrostProvider::build_api().unwrap();
+        BlockfrostProvider { api }
     }
 
-    fn build_api(config: &Config) -> blockfrost::Result<BlockFrostApi> {
-        let mut configurations = load::configurations_from_env()?;
+    fn build_api() -> blockfrost::Result<BlockFrostApi> {
+        let configurations = load::configurations_from_env()?;
 
-        configurations["project_id"] = toml::value::Value::from(config.api_key.clone());
-        configurations["blockfrost-network-address"] = toml::value::Value::from(config.url.clone());
+        debug!("configurations: {:?}", configurations);
 
+        let mut blockfrost_settings = blockfrost::BlockFrostSettings::default();
+        blockfrost_settings.network_address = configurations["cardano_network"].as_str().unwrap().to_owned();
+
+        debug!("bfs: {:?}", blockfrost_settings);
         let api = BlockFrostApi::new(
             configurations["project_id"].as_str().unwrap(),
-            Default::default(),
+            blockfrost_settings,
         );
 
         Ok(api)
@@ -118,6 +115,14 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>
     {
         Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
+    }
+
+    async fn active_pools(
+        &self,
+        page: usize,
+    ) -> Result<Vec<PoolView>, DataProviderError>
+    {
+        Ok(api::active_pools(&self, page).await?)
     }
 
     async fn find_datums_for_tx(
@@ -241,7 +246,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         &self,
         address: &Vec<&str>,
     ) -> Result<Vec<bool>, DataProviderError> {
-        Ok(Vec::new())
+        Ok(api::addresses_exist(self, address).await?)
     }
 
     async fn tx_history(
@@ -250,7 +255,7 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         slot: Option<u64>,
     ) -> Result<Vec<TxHistoryListView>, DataProviderError>
     {
-        Ok(Vec::new())
+        Ok(api::get_addresses_transactions(self, addresses, slot).await?)
     }
 
     async fn retrieve_staked_amount (
@@ -258,13 +263,13 @@ impl super::provider::CardanoDataProvider for BlockfrostProvider {
         epoch: i32,
         stake_addr: &str,
     ) -> Result<BigDecimal, DataProviderError> {
-        Ok(api::retrieve_staked_amount(self, epoch, stake_addr)?)
+        Ok(api::retrieve_staked_amount(self, epoch, stake_addr).await?)
     }
 
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
     ) -> Result<Vec<RewardView>, DataProviderError> {
-        Ok(api::retrieve_generated_rewards(self, stake_addr)?)
+        Ok(api::retrieve_generated_rewards(self, stake_addr).await?)
     }
 }

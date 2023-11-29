@@ -1,0 +1,3 @@
+project_id = "previewYOURBLOCKFROSTTOKEN"
+cardano_network = "https://cardano-preview.blockfrost.io/api/v0"
+ipfs_network = "https://ipfs.blockfrost.io/api/v0"

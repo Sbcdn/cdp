@@ -4,6 +4,7 @@ use bigdecimal::{BigDecimal, ToPrimitive};
 use cardano_serialization_lib::{crypto::ScriptHash, utils::BigNum, AssetName};
 use dcslc::{make_fingerprint, TransactionUnspentOutput};
 use diesel::Queryable;
+use blockfrost::Transaction;
 
 pub type Token = (ScriptHash, AssetName, BigNum);
 pub type Tokens = Vec<Token>;
@@ -164,6 +165,21 @@ impl TxHistoryListView {
         Self {
             hash: hex::encode(&d.hash),
             slot: d.slot,
+            assets,
+        }
+    }
+    pub fn from_blockfrost_tx(tx: &Transaction) -> Self {
+        let mut assets = Vec::<TxHistoryListAssetView>::new();
+        for amount in &tx.output_amount {
+            //TODO: Calculate fingerprint properly, blockfrost provides policy+assetname instead.
+            // Consider extend TxHistoryListAssetView to add policy/assetname also, as fingerprint is not guaranteed to be unique
+            let asset = TxHistoryListAssetView::new(amount.unit.to_owned(), amount.quantity.parse::<u64>().unwrap());
+            assets.push(asset);
+        }
+
+        Self {
+            hash: tx.hash.to_owned(),
+            slot: tx.slot.to_i64().unwrap(),
             assets,
         }
     }

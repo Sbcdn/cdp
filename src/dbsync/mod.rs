@@ -12,7 +12,7 @@ use bigdecimal::BigDecimal;
 
 use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView,
     DelegationView, StakeRegistrationView, StakeDeregistrationView, HoldingWalletView,
-    TxHistoryListView
+    TxHistoryListView, PoolView
 };
 use crate::provider::error::DataProviderError;
 
@@ -114,6 +114,20 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>
     {
         Ok(api::get_utxo_tokens(self, utxo_id, index)?)
+    }
+
+    async fn active_pools(
+        &self,
+        page: usize,
+    ) -> Result<Vec<PoolView>, DataProviderError>
+    {
+        let pools = api::get_pools(&self).await?;
+        let pools_paged: Vec<Vec<PoolView>> = pools.chunks(100).map(|s| s.into()).collect();
+        let pools_page = match pools_paged.get(page) {
+            Some(page) => page.to_vec(),
+            None => Vec::<PoolView>::new()
+        };
+        Ok(pools_page)
     }
 
     async fn find_datums_for_tx(

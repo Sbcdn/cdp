@@ -24,7 +24,7 @@ pub fn select_addr_of_first_transaction(
 }
 
 /// get all utxos of an address
-pub fn get_utxo_by_dataumhash(
+pub fn get_utxo_by_datumhash(
     bfp: &KoiosProvider,
     addr: &str,
     datumhash: &Vec<u8>,
@@ -205,7 +205,7 @@ pub fn retrieve_generated_rewards (
 pub fn pool_vrf_key_hash(
     bfp: &KoiosProvider,
     pool_hash: &str,
-) -> Result<Vec<u8>, DataProviderKoiosError> {
+) -> Result<String, DataProviderKoiosError> {
     todo!()
 }
 
@@ -255,13 +255,6 @@ pub fn pool_fixed_cost(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<BigDecimal, DataProviderKoiosError> {
-    todo!()
-}
-
-pub fn pool_reward_address(
-    bfp: &KoiosProvider,
-    pool_hash: &str,
-) -> Result<String, DataProviderKoiosError> {
     todo!()
 }
 

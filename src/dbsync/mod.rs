@@ -56,7 +56,7 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
         Ok(api::get_stake_address_utxos(self, stake_addr)?)
     }
 
-    async fn script_utxos(
+    async fn get_address_utxos(
         &self,
         addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
@@ -89,12 +89,12 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
     }
 
     /// get all utxos of an address
-    async fn utxo_by_dataumhash(
+    async fn utxo_by_datumhash(
         &self,
         addr: &str,
         datumhash: &Vec<u8>,
     ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
-        let utxo = api::utxo_by_dataumhash(self, addr, datumhash)?;
+        let utxo = api::utxo_by_datumhash(self, addr, datumhash)?;
         Ok(utxo)
     }
 
@@ -268,7 +268,7 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
     async fn pool_vrf_key_hash (
         &self,
         pool_hash: &str,
-    ) -> Result<Vec<u8>, DataProviderError> {
+    ) -> Result<String, DataProviderError> {
         Ok(api::pool_vrf_key_hash(self, pool_hash).await?)
     }
 
@@ -319,13 +319,6 @@ impl super::provider::CardanoDataProvider for DBSyncProvider {
         pool_hash: &str,
     ) -> Result<BigDecimal, DataProviderError> {
         Ok(api::pool_fixed_cost(self, pool_hash).await?)
-    }
-
-    async fn pool_reward_address(
-        &self,
-        pool_hash: &str,
-    ) -> Result<String, DataProviderError> {
-        Ok(api::pool_reward_address(self, pool_hash).await?)
     }
 
     async fn pool_owner(

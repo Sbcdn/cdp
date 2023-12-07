@@ -28,7 +28,7 @@ pub fn select_addr_of_first_transaction(
 }
 
 /// get all utxos of an address
-pub fn utxo_by_dataumhash(
+pub fn utxo_by_datumhash(
     bfp: &BlockfrostProvider,
     addr: &str,
     datumhash: &Vec<u8>,
@@ -262,7 +262,7 @@ pub fn retrieve_generated_rewards (
 pub fn pool_vrf_key_hash (
     bfp: &BlockfrostProvider,
     pool_hash: &str,
-) -> Result<Vec<u8>, DataProviderError> {
+) -> Result<String, DataProviderError> {
     todo!()
 }
 
@@ -312,13 +312,6 @@ pub fn pool_fixed_cost(
     bfp: &BlockfrostProvider,
     pool_hash: &str,
 ) -> Result<BigDecimal, DataProviderError> {
-    todo!()
-}
-
-pub fn pool_reward_address(
-    bfp: &BlockfrostProvider,
-    pool_hash: &str,
-) -> Result<String, DataProviderError> {
     todo!()
 }
 

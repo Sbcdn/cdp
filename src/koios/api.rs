@@ -2,7 +2,7 @@ use super::error::DataProviderKoiosError;
 use super::KoiosProvider;
 use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView,
+    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView, PoolInfo
 };
 use bigdecimal::BigDecimal;
 use serde_json::{Value, json};
@@ -202,13 +202,15 @@ pub fn retrieve_generated_rewards (
     Ok(vec![])
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_vrf_key_hash(
     bfp: &KoiosProvider,
     pool_hash: &str,
-) -> Result<Vec<u8>, DataProviderKoiosError> {
+) -> Result<String, DataProviderKoiosError> {
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_blocks_minted(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -216,6 +218,7 @@ pub fn pool_blocks_minted(
     todo!()
 } 
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_blocks_current_epoch(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -223,6 +226,7 @@ pub fn pool_blocks_current_epoch(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_reward_recipients(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -230,6 +234,7 @@ pub fn pool_reward_recipients(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_last_reward_earned_epoch(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -237,6 +242,7 @@ pub fn pool_last_reward_earned_epoch(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_declared_pledge(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -244,6 +250,7 @@ pub fn pool_declared_pledge(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_margin_cost(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -251,6 +258,7 @@ pub fn pool_margin_cost(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_fixed_cost(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -258,6 +266,7 @@ pub fn pool_fixed_cost(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_reward_address(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -265,6 +274,7 @@ pub fn pool_reward_address(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_owner(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -272,6 +282,7 @@ pub fn pool_owner(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_registration(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -279,6 +290,7 @@ pub fn pool_registration(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_retirement(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -286,6 +298,7 @@ pub fn pool_retirement(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_url(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -293,6 +306,7 @@ pub fn pool_url(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_ticker(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -300,6 +314,7 @@ pub fn pool_ticker(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_metadata_json(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -307,6 +322,7 @@ pub fn pool_metadata_json(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_name(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -314,6 +330,7 @@ pub fn pool_name(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_homepage(
     bfp: &KoiosProvider,
     pool_hash: &str,
@@ -321,9 +338,17 @@ pub fn pool_homepage(
     todo!()
 }
 
+#[cfg(feature = "granular_pool")]
 pub fn pool_description(
     bfp: &KoiosProvider,
     pool_hash: &str,
 ) -> Result<String, DataProviderKoiosError> {
+    todo!()
+}
+
+pub fn pool_info(
+    bfp: &KoiosProvider,
+    pool_hash: &str,
+) -> Result<PoolInfo, DataProviderKoiosError> {
     todo!()
 }

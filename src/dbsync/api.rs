@@ -6,7 +6,7 @@ use crate::models::{
     CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, PoolView, RewardView,
     ScriptView, StakeDelegationView, StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
     TransactionView, TxHistoryListQuery, TxHistoryListQueryLight, TxHistoryListView, UTxOView,
-    WithdrawalView,
+    WithdrawalView, PoolInfo
 };
 use crate::DBSyncProvider;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
@@ -1837,15 +1837,18 @@ pub async fn epoch_change(
 pub async fn pool_vrf_key_hash(
     dbs: &DBSyncProvider,
     pool_hash: &str,
-) -> Result<Vec<u8>, DataProviderDBSyncError> {
-    Ok(
+) -> Result<String, DataProviderDBSyncError> {
+    let bytes =
         pool_update::table
         .inner_join(pool_hash::table.on(pool_hash::id.eq(pool_update::hash_id)))
         .filter(pool_hash::view.eq(pool_hash.to_string()))
         .order(pool_update::active_epoch_no.desc())
         .select(pool_update::vrf_key_hash)
-        .first::<Vec<u8>>(&mut dbs.connect()?)?
-    )
+        .first::<Vec<u8>>(&mut dbs.connect()?)?;
+
+    let hex = hex::encode(bytes);
+    
+    Ok(hex)
 }
 
 /// Total number of blocks ever minted by the given stake pool.
@@ -2143,6 +2146,33 @@ pub async fn pool_description(
         .unwrap()
         .to_string()
     )
+}
+
+/// All information about a given stakepool
+pub async fn pool_info(
+    dbs: &DBSyncProvider,
+    pool_hash: &str,
+) -> Result<PoolInfo, DataProviderDBSyncError> {
+    let r = PoolInfo { 
+        vrf_key_hash: pool_vrf_key_hash(dbs, pool_hash).await.ok(),
+        blocks_minted: pool_blocks_minted(dbs, pool_hash).await.ok(),
+        blocks_current_epoch: pool_blocks_current_epoch(dbs, pool_hash).await.ok(), 
+        reward_recipients: pool_reward_recipients(dbs, pool_hash).await.ok(), 
+        last_reward_earned_epoch: pool_last_reward_earned_epoch(dbs, pool_hash).await.ok(), 
+        declared_pledge: pool_declared_pledge(dbs, pool_hash).await.ok(), 
+        margin_cost: pool_margin_cost(dbs, pool_hash).await.ok(), 
+        fixed_cost: pool_fixed_cost(dbs, pool_hash).await.ok(), 
+        owner: pool_owner(dbs, pool_hash).await.ok(), 
+        registration: pool_registration(dbs, pool_hash).await.ok(), 
+        retirement: pool_retirement(dbs, pool_hash).await.ok(), 
+        url: pool_url(dbs, pool_hash).await.ok(), 
+        ticker: pool_ticker(dbs, pool_hash).await.ok(), 
+        name: pool_name(dbs, pool_hash).await.ok(), 
+        homepage: pool_homepage(dbs, pool_hash).await.ok(), 
+        description: pool_description(dbs, pool_hash).await.ok()
+    };
+
+    Ok(r)
 }
 
 #[cfg(test)]

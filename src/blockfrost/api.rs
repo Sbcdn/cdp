@@ -182,14 +182,9 @@ pub async fn addresses_exist(
     bfp: &BlockfrostProvider,
     addresses: &Vec<&str>,
 ) -> Result<Vec<bool>, DataProviderBlockfrostError> {
-    let mut exists = Vec::<bool>::new();
+    let mut exists = Vec::with_capacity(addresses.len());
     for addr in addresses {
-        let r = bfp.api.addresses(&addr).await;
-        let b = match r {
-            Ok(_) => true,
-            Err(_) => false,
-        };
-        exists.push(b);
+        exists.push(bfp.api.addresses(&addr).await.is_ok())
     };
     Ok(exists)
 }

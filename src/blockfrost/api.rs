@@ -246,10 +246,8 @@ pub async fn active_pools(
         pool_ids.extend(n);
     }
 
-    let pool_ids_page = match pool_ids.chunks(50).nth(page) {
-        Some(pool_ids) => pool_ids,
-        None => &[],
-    };
+    let pool_ids_page = pool_ids.chunks(50).nth(page)
+        .unwrap_or_default();
 
     let mut pools = Vec::<PoolMetadata>::new();
 

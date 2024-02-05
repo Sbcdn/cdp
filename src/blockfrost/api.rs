@@ -16,6 +16,8 @@ use array_tool::vec::Uniq;
 
 use log::debug;
 
+const BLOCKFROST_FETCH_MAX_ITEMS: usize = 10000;
+
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
     bfp: &BlockfrostProvider,
@@ -98,9 +100,9 @@ pub async fn get_address_utxos(
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
 
-    let mut address_utxos = Vec::<AddressUtxo>::new();
+    let mut address_utxos = Vec::<AddressUtxo>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
-    // TODO: See if we could fold with take_while instead of take(10000)
+    // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
     // utxos.extend(
     //     bfp.api
     //         .addresses_utxos_all(&addr)
@@ -110,7 +112,7 @@ pub async fn get_address_utxos(
     //         })
     //         .await,
     // );
-    let mut lister =  bfp.api.addresses_utxos_all(&addr).take(10000);
+    let mut lister =  bfp.api.addresses_utxos_all(&addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
         let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {
@@ -197,11 +199,11 @@ pub async fn get_addresses_transactions(
     _slot: Option<u64>,
 ) -> Result<Vec<TxHistoryListView>, DataProviderBlockfrostError> {
 
-    let mut address_txs = Vec::<AddressTransaction>::new();
+    let mut address_txs = Vec::<AddressTransaction>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
-    // TODO: See if we could fold with take_while instead of take(10000)
+    // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
     for addr in addresses {
-        let mut lister =  bfp.api.addresses_transactions_all(&addr).take(10000);
+        let mut lister =  bfp.api.addresses_transactions_all(&addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
         while let Some(n) = lister.next().await {
             let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
             if n.is_empty() {
@@ -232,10 +234,10 @@ pub async fn active_pools(
     bfp: &BlockfrostProvider,
     page: usize,
 ) -> Result<Vec<PoolView>, DataProviderBlockfrostError> {
-    let mut pool_ids = Vec::<String>::new();
+    let mut pool_ids = Vec::<String>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
-    // TODO: See if we could fold with take_while instead of take(10000)
-    let mut lister =  bfp.api.pools_all().take(10000);
+    // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
+    let mut lister =  bfp.api.pools_all().take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
         let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {
@@ -401,9 +403,9 @@ pub async fn retrieve_staked_amount (
     stake_addr: &str,
 ) -> Result<BigDecimal, DataProviderError> {
 
-    let mut account_history = Vec::<AccountHistory>::new();
-    // TODO: See if we could fold with take_while instead of take(10000)
-    let mut lister =  bfp.api.accounts_history_all(stake_addr).take(10000);
+    let mut account_history = Vec::<AccountHistory>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
+    // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
+    let mut lister =  bfp.api.accounts_history_all(stake_addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
         let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {
@@ -415,10 +417,10 @@ pub async fn retrieve_staked_amount (
     debug!("AC: {:?}", account_history);
 
     let i128_epoch = i128::from(epoch);
-    let amount = account_history.iter()
-        .find(|h| h.active_epoch == i128_epoch)
-        .and_then(|h| h.amount.parse::<u128>()).unwrap_or(0);
-
+    let amount = match account_history.iter().find(|h| h.active_epoch == i128_epoch) {
+        Some(h) => h.amount.parse::<u128>().unwrap_or(0),
+        None => 0,
+    };
     debug!("Amount: {:?}", amount);
     Ok(BigDecimal::from(amount))
 }
@@ -428,10 +430,10 @@ pub async fn retrieve_generated_rewards (
     stake_addr: &str,
 ) -> Result<Vec<RewardView>, DataProviderError> {
 
-    let mut account_rewards = Vec::<AccountReward>::new();
+    let mut account_rewards = Vec::<AccountReward>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
-    // TODO: See if we could fold with take_while instead of take(10000)
-    let mut lister =  bfp.api.accounts_rewards_all(stake_addr).take(10000);
+    // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
+    let mut lister =  bfp.api.accounts_rewards_all(stake_addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
         let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {

@@ -415,10 +415,9 @@ pub async fn retrieve_staked_amount (
     debug!("AC: {:?}", account_history);
 
     let i128_epoch = i128::from(epoch);
-    let amount = match account_history.iter().find(|h| h.active_epoch == i128_epoch) {
-        Some(h) => h.amount.parse::<u128>().unwrap_or(0),
-        None => 0,
-    };
+    let amount = account_history.iter()
+        .find(|h| h.active_epoch == i128_epoch)
+        .and_then(|h| h.amount.parse::<u128>()).unwrap_or(0);
 
     debug!("Amount: {:?}", amount);
     Ok(BigDecimal::from(amount))

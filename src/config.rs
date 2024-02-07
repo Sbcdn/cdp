@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize, de::Deserializer};
+use serde::{de::Deserializer, Deserialize, Serialize};
 
 use crate::provider::error::DataProviderError;
 use crate::provider::ProviderType;
@@ -175,11 +175,15 @@ impl From<ChainConfig> for ChainWellKnownInfo {
 /// Helper trait to deserialize strings to enum (not supported natively in Toml)
 pub trait DeserializeWith: Sized {
     fn deserialize_with<'de, D>(de: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de>;
+    where
+        D: Deserializer<'de>;
 }
 
 impl DeserializeWith for ProviderType {
-    fn deserialize_with<'de, D>(de: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+    fn deserialize_with<'de, D>(de: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         let s = String::deserialize(de)?;
         match s.as_ref() {
             "dbsync" => Ok(ProviderType::Dbsync),
@@ -231,12 +235,12 @@ impl ConfigRoot {
 }
 
 mod connectivity {
+    use super::{DeserializeWith, ProviderType};
     use serde::Deserialize;
-    use super::{ProviderType, DeserializeWith};
     #[derive(Deserialize)]
     pub struct Config {
-        #[serde(deserialize_with="ProviderType::deserialize_with")]
-        pub provider:  ProviderType,
+        #[serde(deserialize_with = "ProviderType::deserialize_with")]
+        pub provider: ProviderType,
         pub dbsync_url: String,
         // pub blockfrost_api_url: String,
         // pub blockfrost_project_id: String,

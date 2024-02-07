@@ -1,5 +1,7 @@
-use crate::models::{CDPDatum, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView,
-    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView, RewardView, PoolView
+use crate::models::{
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, PoolView, RewardView,
+    StakeDelegationView, StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    TxHistoryListView,
 };
 use crate::provider::error::DataProviderError;
 
@@ -69,10 +71,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
     async fn first_transaction_from_stake_addr(
         &self,
         stake_address_in: &str,
-    ) -> Result<
-        cardano_serialization_lib::address::Address,
-        DataProviderError,
-    > {
+    ) -> Result<cardano_serialization_lib::address::Address, DataProviderError> {
         let str_addr = api::select_addr_of_first_transaction(self, stake_address_in)?;
         Ok(dcslc::addr_from_str(&str_addr)?)
     }
@@ -101,23 +100,17 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         &self,
         tx_id: i64,
         tx_index: i16,
-    ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError>
-    {
+    ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError> {
         Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
     }
 
-    async fn active_pools(
-        &self,
-        page: usize,
-    ) -> Result<Vec<PoolView>, DataProviderError>
-    {
-        Err(DataProviderError::KoiosError(DataProviderKoiosError::Custom("Not implemented".to_string())))
+    async fn active_pools(&self, page: usize) -> Result<Vec<PoolView>, DataProviderError> {
+        Err(DataProviderError::KoiosError(
+            DataProviderKoiosError::Custom("Not implemented".to_string()),
+        ))
     }
 
-    async fn find_datums_for_tx(
-        &self,
-        txid: &Vec<u8>,
-    ) -> Result<Vec<CDPDatum>, DataProviderError> {
+    async fn find_datums_for_tx(&self, txid: &Vec<u8>) -> Result<Vec<CDPDatum>, DataProviderError> {
         Ok(api::find_datums_for_tx(self, txid)?)
     }
 
@@ -129,8 +122,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         &self,
         pool: &str,
         epoch: i32,
-    ) -> Result<Vec<StakeDelegationView>, DataProviderError>
-    {
+    ) -> Result<Vec<StakeDelegationView>, DataProviderError> {
         Ok(api::stakers_on_pool(self, pool, epoch)?)
     }
 
@@ -148,11 +140,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         )?)
     }
 
-    async fn pool_total_staked(
-        &self,
-        pool: &str,
-        epoch: i32,
-    ) -> Result<u64, DataProviderError> {
+    async fn pool_total_staked(&self, pool: &str, epoch: i32) -> Result<u64, DataProviderError> {
         Ok(api::pool_total_stake(self, pool, epoch)?)
     }
 
@@ -168,28 +156,21 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         Ok(api::fingerprint(self, policy, tokenname)?)
     }
 
-    async fn token_info(
-        &self,
-        fingerprint_in: &str,
-    ) -> Result<TokenInfoView, DataProviderError> {
+    async fn token_info(&self, fingerprint_in: &str) -> Result<TokenInfoView, DataProviderError> {
         Ok(api::token_info(self, fingerprint_in)?)
     }
 
     async fn stake_registration(
         &self,
         stake_addr_in: &str,
-    ) -> Result<Vec<StakeRegistrationView>, DataProviderError>
-    {
+    ) -> Result<Vec<StakeRegistrationView>, DataProviderError> {
         Ok(api::stake_registration(self, stake_addr_in)?)
     }
 
     async fn stake_deregistration(
         &self,
         stake_addr_in: &str,
-    ) -> Result<
-        Vec<StakeDeregistrationView>,
-        DataProviderError,
-    > {
+    ) -> Result<Vec<StakeDeregistrationView>, DataProviderError> {
         Ok(api::stake_deregistration(self, stake_addr_in)?)
     }
 
@@ -204,37 +185,26 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         &self,
         fingerprint_in: &str,
         min_amount: Option<&i64>,
-    ) -> Result<Vec<HoldingWalletView>, DataProviderError>
-    {
+    ) -> Result<Vec<HoldingWalletView>, DataProviderError> {
         Ok(api::lookup_token_holders(self, fingerprint_in, min_amount)?)
     }
 
     async fn lookup_nft_token_holders(
         &self,
         policy: &str,
-    ) -> Result<Vec<HoldingWalletView>, DataProviderError>
-    {
+    ) -> Result<Vec<HoldingWalletView>, DataProviderError> {
         Ok(api::lookup_nft_token_holders(self, policy)?)
     }
 
-    async fn pool_valid(
-        &self,
-        pool_id: &str,
-    ) -> Result<bool, DataProviderError> {
+    async fn pool_valid(&self, pool_id: &str) -> Result<bool, DataProviderError> {
         Ok(api::pool_valid(self, pool_id)?)
     }
 
-    async fn txhash_spent(
-        &self,
-        txhash: &str,
-    ) -> Result<bool, DataProviderError> {
+    async fn txhash_spent(&self, txhash: &str) -> Result<bool, DataProviderError> {
         Ok(api::txhash_spent(self, txhash)?)
     }
 
-    async fn addresses_exist(
-        &self,
-        address: &Vec<&str>,
-    ) -> Result<Vec<bool>, DataProviderError> {
+    async fn addresses_exist(&self, address: &Vec<&str>) -> Result<Vec<bool>, DataProviderError> {
         Ok(Vec::new())
     }
 
@@ -242,12 +212,11 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         &self,
         addresses: &Vec<&str>,
         slot: Option<u64>,
-    ) -> Result<Vec<TxHistoryListView>, DataProviderError>
-    {
+    ) -> Result<Vec<TxHistoryListView>, DataProviderError> {
         Ok(Vec::new())
     }
 
-    async fn retrieve_staked_amount (
+    async fn retrieve_staked_amount(
         &self,
         epoch: i32,
         stake_addr: &str,
@@ -255,7 +224,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         Ok(api::retrieve_staked_amount(self, epoch, stake_addr)?)
     }
 
-    async fn retrieve_generated_rewards (
+    async fn retrieve_generated_rewards(
         &self,
         stake_addr: &str,
     ) -> Result<Vec<RewardView>, DataProviderError> {

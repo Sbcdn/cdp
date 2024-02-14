@@ -1,7 +1,7 @@
+use serde::Deserialize;
 pub mod config;
 pub mod error;
-use crate::models::{CDPDatum, TxHistoryListView
-};
+use crate::models::{CDPDatum, TxHistoryListView, PoolView};
 
 use super::models::{
     CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
@@ -13,8 +13,24 @@ use dcslc::TransactionUnspentOutputs;
 use error::DataProviderError;
 use bigdecimal::BigDecimal;
 
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+pub enum ProviderType {
+    Dbsync,
+    Blockfrost,
+}
+
+impl ProviderType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ProviderType::Dbsync => "dbsync",
+            ProviderType::Blockfrost => "blockfrost"
+        }
+    }
+}
+
 #[async_trait]
-pub trait CardanoDataProvider {
+pub trait CardanoDataProvider: Send + Sync {
     ///returns true if the dataprovider is operational
     async fn alive(&self) -> bool;
     /// returns all TransactionUnspentOutputs of a stake address, does not include any script addresses
@@ -32,6 +48,11 @@ pub trait CardanoDataProvider {
         &self,
         addr: &str,
     ) -> Result<TransactionUnspentOutputs, DataProviderError>;
+    /// returns all TransactionUnspentOutputs of an address
+    async fn active_pools(
+        &self,
+        page: usize,
+    ) -> Result<Vec<PoolView>, DataProviderError>;
     /// returns metadata of the last minting transaction
     async fn mint_metadata(&self, fingerprint_in: &str)
         -> Result<TokenInfoView, DataProviderError>;
@@ -213,6 +234,13 @@ impl<T: CardanoDataProvider + std::marker::Sync + std::marker::Send> CardanoData
         tx_index: i16,
     ) -> Result<Vec<CardanoNativeAssetView>, DataProviderError> {
         self.provider().utxo_tokens(tx_id, tx_index).await
+    }
+
+    async fn active_pools(
+        &self,
+        page: usize,
+    ) -> Result<Vec<PoolView>, DataProviderError> {
+        self.provider().active_pools(page).await
     }
 
     async fn find_datums_for_tx(&self, txid: &Vec<u8>) -> Result<Vec<CDPDatum>, DataProviderError> {

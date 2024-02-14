@@ -6,11 +6,51 @@ use crate::server::error::RESTError;
 use crate::server::filter::with_auth;
 use crate::server::handler::make_error;
 use crate::{models::TokenInfoView, provider::CardanoDataProvider};
+use crate::{DataProvider, DBSyncProvider, BlockfrostProvider};
+use crate::provider::ProviderType;
 use ::log::debug;
 use cardano_serialization_lib::utils::from_bignum;
 use dcslc::{make_fingerprint, TransactionUnspentOutputs};
 use rweb::*;
 use serde_json::json;
+
+fn get_cardano_data_provider() -> Box<dyn CardanoDataProvider> {
+    let provider = std::env::var("PROVIDER").unwrap();
+    match provider.as_str() {
+        "blockfrost" => Box::new(
+            DataProvider::new(
+                BlockfrostProvider::new()
+            )
+        ),
+        "dbsync" => Box::new(
+            DataProvider::new(
+                DBSyncProvider::new(crate::Config {db_path: std::env::var("DBSYNC_URL").unwrap()})
+            )
+        ),
+        // Panic as we never should reach this, config is validated
+        _ => panic!("Provider #{provider} not recognised")
+    }
+}
+
+#[get("/address/exist")]
+#[openapi(
+    id = "api.info.address",
+    tags("Addresses"),
+    summary = "Checks if the addresses are known by the blockchain"
+)]
+pub async fn address_exists(
+    //#[data] dp: dyn CardanoDataProvider,
+    #[query] addresses: String,
+    #[filter = "with_auth"] _user_id: String,
+) -> Result<Json<serde_json::Value>, Rejection> {
+    let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses).unwrap();
+    let addresses = addresses.iter_mut().map(|address| &address[..]).collect();
+
+    let dp = get_cardano_data_provider();
+    let result = dp.addresses_exist(&addresses).await.unwrap();
+
+    Ok(rweb::Json::from(json!(result)))
+}
 
 #[get("/utxos/{address}")]
 #[openapi(
@@ -22,40 +62,16 @@ pub async fn utxos_per_addr(
     address: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    // check against dataprovider
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
-    }));
+    let dp = get_cardano_data_provider();
 
     let utxos = dp
         .script_utxos(&address)
         .await
-        .map_err(|_| RESTError::Custom("Could not find UTxOs".to_string()))?;
+        .map_err(|e| RESTError::Custom(format!("Could not find UTxOs: {:?}",e)))?;
 
     let result = serde_json::to_value(utxos.to_hex().unwrap())
         .map_err(|_| RESTError::Custom("db error, could not get utxos".to_string()))?;
     Ok(rweb::Json::from(result))
-}
-
-#[get("/address/exist")]
-#[openapi(
-    id = "api.info.address",
-    tags("Addresses"),
-    summary = "Checks if the addresses are known by the blockchain"
-)]
-pub async fn address_exists(
-    #[query] addresses: String,
-    #[filter = "with_auth"] _user_id: String,
-) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
-    }));
-    let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses).unwrap();
-    let addresses = addresses.iter_mut().map(|address| &address[..]).collect();
-
-    let result = dp.addresses_exist(&addresses).await.unwrap();
-
-    Ok(rweb::Json::from(json!(result)))
 }
 
 fn parse_string_vec_from_query(query: &str) -> Result<Vec<String>, RESTError> {
@@ -83,9 +99,9 @@ pub async fn mint_metadata(
     fingerprint: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: dotenv::var("DBSYNC_URL").unwrap(),
-    }));
+
+    let dp = get_cardano_data_provider();
+
     let metadata: TokenInfoView = match dp.mint_metadata(&fingerprint).await {
         Ok(metadata) => metadata,
         Err(e) => return Err(RESTError::Custom(e.to_string()).into()),
@@ -116,16 +132,14 @@ pub async fn mint_metadata_policy_assetname(
 #[openapi(
     id = "api.info.history",
     tags("Transaction History"),
-    summary = "Retrieve minting metadata for the specified token. Expects fingerprint"
+    summary = "Retrieve hashes of transactions that involve the provided addresses. Expect list of addresses"
 )]
 pub async fn tx_history(
     #[query] addresses: String,
     #[query] slot: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
-    }));
+    let dp = get_cardano_data_provider();
     let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses).unwrap();
     let addresses = addresses.iter_mut().map(|address| &address[..]).collect();
 
@@ -146,6 +160,16 @@ pub async fn tx_history_discover(
     hash: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
+    // Return if provider is blockfrost, BF does not support fingerprint-based requests
+    let provider = std::env::var("PROVIDER").unwrap();
+    if provider.as_str() == "blockfrost" {
+        return make_error(
+            "Fingerprints not supported in blockfrost provider".to_string(),
+            Some(1005),
+            Some("Fingerprints not supported in blockfrost provider"),
+        );
+    }
+
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
@@ -189,9 +213,7 @@ pub(crate) async fn get_asset_for_addresses(
     addresses: &Vec<String>,
 ) -> Result<Vec<AssetHandle>, Rejection> {
     debug!("{addresses:?}");
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
-    }));
+    let dp = get_cardano_data_provider();
 
     let mut utxos = TransactionUnspentOutputs::new();
 
@@ -403,19 +425,9 @@ pub async fn retrieve_active_pools(
     page: usize,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
-    }));
-    let pools = crate::dbsync::get_pools(dp.provider()).await.unwrap();
-    let pools_paged: Vec<Vec<PoolView>> = pools.chunks(100).map(|s| s.into()).collect();
-    if pools_paged.len() < page {
-        return make_error(
-            format!("Page {} is the last page", pools_paged.len()),
-            None,
-            None,
-        );
-    }
-    Ok(rweb::Json::from(json!(pools_paged[page])))
+    let dp = get_cardano_data_provider();
+    let pools_page = dp.active_pools(page).await.unwrap();
+    Ok(rweb::Json::from(json!(pools_page)))
 }
 
 #[get("/tokens/supply/{fingerprint}")]
@@ -452,6 +464,17 @@ pub async fn is_nft(
     #[query] fingerprints: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
+
+    // Return if provider is blockfrost, BF does not support fingerprint-based requests
+    let provider = std::env::var("PROVIDER").unwrap();
+    if provider.as_str() == "blockfrost" {
+        return make_error(
+            "Fingerprints not supported in blockfrost provider".to_string(),
+            Some(1005),
+            Some("Fingerprints not supported in blockfrost provider"),
+        );
+    }
+
     let f = match parse_string_vec_from_query(&fingerprints) {
         Ok(u) => u,
         Err(e) => {
@@ -462,7 +485,7 @@ pub async fn is_nft(
             );
         }
     };
-    debug!("Creatign dataprovider instance");
+    debug!("Creating dataprovider instance");
     let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
         db_path: std::env::var("DBSYNC_URL").unwrap(),
     }));
@@ -494,9 +517,7 @@ pub async fn retrieve_staked_amount(
     stake_addr: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
-    }));
+    let dp = get_cardano_data_provider();
 
     dbg!(epoch.clone());
     dbg!(stake_addr.clone());
@@ -520,9 +541,7 @@ pub async fn retrieve_generated_rewards(
     stake_addr: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = crate::DataProvider::new(crate::DBSyncProvider::new(crate::Config {
-        db_path: std::env::var("DBSYNC_URL").unwrap(),
-    }));
+    let dp = get_cardano_data_provider();
 
     let generated_rewards = dp
         .retrieve_generated_rewards(&stake_addr)

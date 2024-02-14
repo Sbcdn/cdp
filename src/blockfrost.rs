@@ -1,62 +1,74 @@
-use crate::models::{CDPDatum, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView,
-    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView, RewardView
-};
 use crate::provider::error::DataProviderError;
+use crate::models::{CDPDatum, RewardView, TokenInfoView, CardanoNativeAssetView, StakeDelegationView, DelegationView, 
+    StakeRegistrationView, StakeDeregistrationView, HoldingWalletView, TxHistoryListView, PoolView
+};
 
-use self::error::DataProviderKoiosError;
 use async_trait::async_trait;
+use blockfrost::{load, BlockFrostApi};
+use bigdecimal::BigDecimal;
+
+use ::log::debug;
+
 pub mod api;
 pub mod error;
 pub mod models;
-use bigdecimal::BigDecimal;
 
-pub struct Config {
-    pub url: String,
-    pub api_token: String,
+pub struct BlockfrostProvider {
+    api: BlockFrostApi,
 }
 
-pub struct KoiosProvider {
-    config: Config,
-}
+unsafe impl Send for BlockfrostProvider {}
+unsafe impl Sync for BlockfrostProvider {}
 
-impl KoiosProvider {
-    pub fn new(config: Config) -> Self {
-        KoiosProvider { config }
+impl BlockfrostProvider {
+    pub fn new() -> Self {
+        let api = BlockfrostProvider::build_api().unwrap();
+        BlockfrostProvider { api }
     }
 
-    fn connect(&self) -> Result<(), DataProviderKoiosError> {
-        Ok(())
+    fn build_api() -> blockfrost::Result<BlockFrostApi> {
+        let configurations = load::configurations_from_env()?;
+
+        debug!("configurations: {:?}", configurations);
+
+        let mut blockfrost_settings = blockfrost::BlockFrostSettings::default();
+        blockfrost_settings.network_address = configurations["cardano_network"].as_str().unwrap().to_owned();
+
+        debug!("bfs: {:?}", blockfrost_settings);
+        let api = BlockFrostApi::new(
+            configurations["project_id"].as_str().unwrap(),
+            blockfrost_settings,
+        );
+
+        Ok(api)
     }
 }
-
-unsafe impl Send for KoiosProvider {}
-unsafe impl Sync for KoiosProvider {}
 
 #[async_trait]
-impl super::provider::CardanoDataProvider for KoiosProvider {
+impl super::provider::CardanoDataProvider for BlockfrostProvider {
     async fn alive(&self) -> bool {
-        self.connect().is_ok()
+        self.api.health().await.is_ok()
     }
 
     async fn wallet_utxos(
         &self,
         stake_addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
-        Ok(api::get_stake_address_utxos(self, stake_addr)?)
+        Ok(api::get_stake_address_utxos(self, stake_addr).await?)
     }
 
     async fn script_utxos(
         &self,
         addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
-        Ok(api::get_address_utxos(self, addr)?)
+        Ok(api::get_address_utxos(self, addr).await?)
     }
 
     async fn asset_utxos_on_addr(
         &self,
         addr: &str,
     ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderError> {
-        Ok(api::asset_utxos_on_addr(self, addr)?)
+        Ok(api::asset_utxos_on_addr(self, addr).await?)
     }
 
     async fn mint_metadata(
@@ -77,13 +89,12 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         Ok(dcslc::addr_from_str(&str_addr)?)
     }
 
-    /// get all utxos of an address
     async fn utxo_by_dataumhash(
         &self,
         addr: &str,
         datumhash: &Vec<u8>,
     ) -> Result<dcslc::TransactionUnspentOutput, DataProviderError> {
-        let utxo = api::get_utxo_by_dataumhash(self, addr, datumhash)?;
+        let utxo = api::utxo_by_dataumhash(self, addr, datumhash)?;
         Ok(utxo)
     }
 
@@ -106,6 +117,14 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         Ok(api::get_utxo_tokens(self, tx_id, tx_index)?)
     }
 
+    async fn active_pools(
+        &self,
+        page: usize,
+    ) -> Result<Vec<PoolView>, DataProviderError>
+    {
+        Ok(api::active_pools(&self, page).await?)
+    }
+
     async fn find_datums_for_tx(
         &self,
         txid: &Vec<u8>,
@@ -114,7 +133,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
     }
 
     async fn slot(&self) -> Result<i64, DataProviderError> {
-        Ok(api::slot(self)?)
+        Ok(api::slot(self).await?)
     }
 
     async fn stakers_on_pool(
@@ -123,7 +142,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         epoch: i32,
     ) -> Result<Vec<StakeDelegationView>, DataProviderError>
     {
-        Ok(api::stakers_on_pool(self, pool, epoch)?)
+        Ok(api::pool_delegations(self, pool, epoch)?)
     }
 
     async fn deligations_per_pool_epoch_intervall(
@@ -149,7 +168,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
     }
 
     async fn current_epoch(&self) -> Result<i32, DataProviderError> {
-        Ok(api::current_epoch(self)?)
+        Ok(api::current_epoch(self).await?)
     }
 
     async fn fingerprint(
@@ -227,7 +246,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         &self,
         address: &Vec<&str>,
     ) -> Result<Vec<bool>, DataProviderError> {
-        Ok(Vec::new())
+        Ok(api::addresses_exist(self, address).await?)
     }
 
     async fn tx_history(
@@ -236,7 +255,7 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         slot: Option<u64>,
     ) -> Result<Vec<TxHistoryListView>, DataProviderError>
     {
-        Ok(Vec::new())
+        Ok(api::get_addresses_transactions(self, addresses, slot).await?)
     }
 
     async fn retrieve_staked_amount (
@@ -244,13 +263,13 @@ impl super::provider::CardanoDataProvider for KoiosProvider {
         epoch: i32,
         stake_addr: &str,
     ) -> Result<BigDecimal, DataProviderError> {
-        Ok(api::retrieve_staked_amount(self, epoch, stake_addr)?)
+        Ok(api::retrieve_staked_amount(self, epoch, stake_addr).await?)
     }
 
     async fn retrieve_generated_rewards (
         &self,
         stake_addr: &str,
     ) -> Result<Vec<RewardView>, DataProviderError> {
-        Ok(api::retrieve_generated_rewards(self, stake_addr)?)
+        Ok(api::retrieve_generated_rewards(self, stake_addr).await?)
     }
 }

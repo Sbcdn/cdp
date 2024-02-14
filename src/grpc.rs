@@ -13,7 +13,7 @@ use aya_cardano::{
 use cardano_serialization_lib::crypto::Ed25519KeyHash;
 use cardano_serialization_lib::AssetName;
 pub mod aya_cardano {
-    include!("../proto/aya_cardano.rs");
+    include!("proto/aya_cardano.rs");
     //tonic::include_proto!("aya_cardano"); // The string specified here must match the proto package name
 }
 use base64::{

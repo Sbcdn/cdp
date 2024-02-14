@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{de::Deserializer, Deserialize, Serialize};
 
 use crate::provider::error::DataProviderError;
+use crate::provider::ProviderType;
 
 /// Well-known magic for testnet
 pub const TESTNET_MAGIC: u64 = 1097911063;
@@ -171,6 +172,27 @@ impl From<ChainConfig> for ChainWellKnownInfo {
     }
 }
 
+/// Helper trait to deserialize strings to enum (not supported natively in Toml)
+pub trait DeserializeWith: Sized {
+    fn deserialize_with<'de, D>(de: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>;
+}
+
+impl DeserializeWith for ProviderType {
+    fn deserialize_with<'de, D>(de: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(de)?;
+        match s.as_ref() {
+            "dbsync" => Ok(ProviderType::Dbsync),
+            "blockfrost" => Ok(ProviderType::Blockfrost),
+            _ => Err(serde::de::Error::custom("error trying to deserialize connectivity.provider, should be one of [dbsync, blockfrost]"))
+        }
+    }
+}
+
 #[derive(Deserialize)]
 pub struct ConfigRoot {
     pub appconfigs: appconfigs::Config,
@@ -200,7 +222,10 @@ impl ConfigRoot {
             appconfigs::Config::Nft(x) => std::env::set_var("ENNFT_POLICY", x.policy_id),
             appconfigs::Config::None => {}
         }
+        std::env::set_var("PROVIDER", &self.connectivity.provider.as_str());
         std::env::set_var("DBSYNC_URL", &self.connectivity.dbsync_url);
+        //std::env::set_var("BLOCKFROST_API_URL", &self.connectivity.blockfrost_api_url);
+        //std::env::set_var("BLOCKFROST_PROJECT_ID", &self.connectivity.blockfrost_project_id);
         std::env::set_var("TX_SUBMIT_ENDPOINT1", &self.connectivity.submit_endpoint_1);
         std::env::set_var("TX_SUBMIT_ENDPOINT2", &self.connectivity.submit_endpoint_2);
         std::env::set_var("TX_SUBMIT_ENDPOINT3", &self.connectivity.submit_endpoint_3);
@@ -210,10 +235,15 @@ impl ConfigRoot {
 }
 
 mod connectivity {
+    use super::{DeserializeWith, ProviderType};
     use serde::Deserialize;
     #[derive(Deserialize)]
     pub struct Config {
+        #[serde(deserialize_with = "ProviderType::deserialize_with")]
+        pub provider: ProviderType,
         pub dbsync_url: String,
+        // pub blockfrost_api_url: String,
+        // pub blockfrost_project_id: String,
         pub submit_endpoint_1: String,
         pub submit_endpoint_2: String,
         pub submit_endpoint_3: String,

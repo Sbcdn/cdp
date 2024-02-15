@@ -1,18 +1,20 @@
-use blockfrost::{stream::StreamExt, AddressTransaction, Transaction, PoolMetadata, AccountHistory, AccountReward};
-use itertools::Itertools;
+use blockfrost::{
+    stream::StreamExt, AccountHistory, AccountReward, AddressTransaction, PoolMetadata, Transaction,
+};
 
 use super::error::DataProviderBlockfrostError;
 use super::BlockfrostProvider;
 use crate::models::{
-    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, StakeDelegationView,
-    StakeDeregistrationView, StakeRegistrationView, TokenInfoView, RewardView, TxHistoryListView, PoolView
+    CDPDatum, CardanoNativeAssetView, DelegationView, HoldingWalletView, PoolView, RewardView,
+    StakeDelegationView, StakeDeregistrationView, StakeRegistrationView, TokenInfoView,
+    TxHistoryListView,
 };
 
-use cardano_serialization_lib as csl;
 use crate::provider::error::DataProviderError;
-use blockfrost::{AccountAddress, AddressUtxo};
-use bigdecimal::BigDecimal;
 use array_tool::vec::Uniq;
+use bigdecimal::BigDecimal;
+use blockfrost::{AccountAddress, AddressUtxo};
+use cardano_serialization_lib as csl;
 
 use log::debug;
 
@@ -60,7 +62,8 @@ pub fn utxo_by_txid(
 fn bf_utxo_as_csl_utxo(address_utxo: &AddressUtxo) -> csl::utils::TransactionUnspentOutput {
     //debug!("C1: {:?}", address_utxo.tx_hash.clone());
     let input = csl::TransactionInput::new(
-        &csl::crypto::TransactionHash::from_bytes(hex::decode(&address_utxo.tx_hash).unwrap()).unwrap(),
+        &csl::crypto::TransactionHash::from_bytes(hex::decode(&address_utxo.tx_hash).unwrap())
+            .unwrap(),
         address_utxo.output_index,
     );
 
@@ -77,9 +80,10 @@ fn bf_utxo_as_csl_utxo(address_utxo: &AddressUtxo) -> csl::utils::TransactionUns
             ma.set_asset(
                 &csl::PolicyID::from_bytes(hex::decode(hexpolicy).unwrap()).unwrap(),
                 &csl::AssetName::new(hex::decode(hexname).unwrap()).unwrap(),
-                qty);
+                qty,
+            );
         }
-    };
+    }
     if ma.len() > 0 {
         cvalue.set_multiasset(&ma);
     }
@@ -99,7 +103,6 @@ pub async fn get_address_utxos(
     bfp: &BlockfrostProvider,
     addr: &str,
 ) -> Result<dcslc::TransactionUnspentOutputs, DataProviderBlockfrostError> {
-
     let mut address_utxos = Vec::<AddressUtxo>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
     // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
@@ -112,9 +115,12 @@ pub async fn get_address_utxos(
     //         })
     //         .await,
     // );
-    let mut lister =  bfp.api.addresses_utxos_all(&addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
+    let mut lister = bfp
+        .api
+        .addresses_utxos_all(&addr)
+        .take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
-        let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
+        let n = n.map_err(|e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {
             break;
         };
@@ -187,10 +193,9 @@ pub async fn addresses_exist(
     let mut exists = Vec::with_capacity(addresses.len());
     for addr in addresses {
         exists.push(bfp.api.addresses(&addr).await.is_ok())
-    };
+    }
     Ok(exists)
 }
-
 
 /// Get list of txs involving addresses
 pub async fn get_addresses_transactions(
@@ -198,14 +203,16 @@ pub async fn get_addresses_transactions(
     addresses: &Vec<&str>,
     _slot: Option<u64>,
 ) -> Result<Vec<TxHistoryListView>, DataProviderBlockfrostError> {
-
     let mut address_txs = Vec::<AddressTransaction>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
     // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
     for addr in addresses {
-        let mut lister =  bfp.api.addresses_transactions_all(&addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
+        let mut lister = bfp
+            .api
+            .addresses_transactions_all(&addr)
+            .take(BLOCKFROST_FETCH_MAX_ITEMS);
         while let Some(n) = lister.next().await {
-            let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
+            let n = n.map_err(|e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
             if n.is_empty() {
                 break;
             };
@@ -213,19 +220,26 @@ pub async fn get_addresses_transactions(
         }
     }
 
-    let tx_hashes = address_txs.iter().map(|t| t.tx_hash.to_owned()).collect::<Vec<_>>().unique();
+    let tx_hashes = address_txs
+        .iter()
+        .map(|t| t.tx_hash.to_owned())
+        .collect::<Vec<_>>()
+        .unique();
 
     let mut transactions = Vec::<Transaction>::new();
     for tx_hash in tx_hashes {
-        let tx = bfp.api
+        let tx = bfp
+            .api
             .transaction_by_hash(&tx_hash)
             .await
-            .map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
+            .map_err(|e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         transactions.push(tx);
-        
     }
 
-    let r =  transactions.iter().map(|tx| TxHistoryListView::from_blockfrost_tx(tx)).collect::<Vec<_>>();
+    let r = transactions
+        .iter()
+        .map(|tx| TxHistoryListView::from_blockfrost_tx(tx))
+        .collect::<Vec<_>>();
     Ok(r)
 }
 
@@ -237,43 +251,43 @@ pub async fn active_pools(
     let mut pool_ids = Vec::<String>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
     // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
-    let mut lister =  bfp.api.pools_all().take(BLOCKFROST_FETCH_MAX_ITEMS);
+    let mut lister = bfp.api.pools_all().take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
-        let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
+        let n = n.map_err(|e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {
             break;
         };
         pool_ids.extend(n);
     }
 
-    let pool_ids_page = pool_ids.chunks(50).nth(page)
-        .unwrap_or_default();
+    let pool_ids_page = pool_ids.chunks(50).nth(page).unwrap_or_default();
 
     let mut pools = Vec::<PoolMetadata>::new();
 
     for pool_id in pool_ids_page {
-        let pool_metadata = bfp.api.pools_metadata(&pool_id)
+        let pool_metadata = bfp
+            .api
+            .pools_metadata(&pool_id)
             .await
-            .map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
+            .map_err(|e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         pools.push(pool_metadata);
-        
     }
 
-    let r =  pools.iter().map(|pm|
-                                     PoolView {
-                                         pool_hash: pm.pool_id.clone(),
-                                         ticker: pm.ticker.as_ref().unwrap_or(&"".to_string()).clone(),
-                                         json: serde_json::json!({
-                                             "name": pm.name.as_ref().unwrap_or(&"".to_string()).clone(),
-                                             "homepage": pm.homepage.as_ref().unwrap_or(&"".to_string()).clone(),
-                                             "description": pm.name.as_ref().unwrap_or(&"".to_string()).clone(),
-                                         }),
-                                     })
+    let r = pools
+        .iter()
+        .map(|pm| PoolView {
+            pool_hash: pm.pool_id.clone(),
+            ticker: pm.ticker.as_ref().unwrap_or(&"".to_string()).clone(),
+            json: serde_json::json!({
+                "name": pm.name.as_ref().unwrap_or(&"".to_string()).clone(),
+                "homepage": pm.homepage.as_ref().unwrap_or(&"".to_string()).clone(),
+                "description": pm.name.as_ref().unwrap_or(&"".to_string()).clone(),
+            }),
+        })
         .collect::<Vec<_>>();
 
     Ok(r)
 }
-
 
 pub fn find_datums_for_tx(
     bfp: &BlockfrostProvider,
@@ -376,7 +390,9 @@ pub fn mint_metadata(
     // Impossible only with blockfrost, not supported querying any asset info from fingerprint
     // (and is not possible to get policy+assetname from fingerprint)
     // See https://blockfrost.dev/support/cardano#poolpm-uses-fingerprints-for-querying-assets-why-dont-you-too
-    Err(DataProviderBlockfrostError::Custom("Fingerprint unsupported, use policy/assetname instead".to_string()))
+    Err(DataProviderBlockfrostError::Custom(
+        "Fingerprint unsupported, use policy/assetname instead".to_string(),
+    ))
 }
 
 pub fn pool_valid(
@@ -395,17 +411,19 @@ pub fn txhash_spent(
     Ok(false)
 }
 
-pub async fn retrieve_staked_amount (
+pub async fn retrieve_staked_amount(
     bfp: &BlockfrostProvider,
     epoch: i32,
     stake_addr: &str,
 ) -> Result<BigDecimal, DataProviderError> {
-
     let mut account_history = Vec::<AccountHistory>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
     // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
-    let mut lister =  bfp.api.accounts_history_all(stake_addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
+    let mut lister = bfp
+        .api
+        .accounts_history_all(stake_addr)
+        .take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
-        let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
+        let n = n.map_err(|e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {
             break;
         };
@@ -415,7 +433,10 @@ pub async fn retrieve_staked_amount (
     debug!("AC: {:?}", account_history);
 
     let i128_epoch = i128::from(epoch);
-    let amount = match account_history.iter().find(|h| h.active_epoch == i128_epoch) {
+    let amount = match account_history
+        .iter()
+        .find(|h| h.active_epoch == i128_epoch)
+    {
         Some(h) => h.amount.parse::<u128>().unwrap_or(0),
         None => 0,
     };
@@ -423,17 +444,19 @@ pub async fn retrieve_staked_amount (
     Ok(BigDecimal::from(amount))
 }
 
-pub async fn retrieve_generated_rewards (
+pub async fn retrieve_generated_rewards(
     bfp: &BlockfrostProvider,
     stake_addr: &str,
 ) -> Result<Vec<RewardView>, DataProviderError> {
-
     let mut account_rewards = Vec::<AccountReward>::with_capacity(BLOCKFROST_FETCH_MAX_ITEMS);
 
     // TODO: See if we could fold with take_while instead of take(BLOCKFROST_FETCH_MAX_ITEMS)
-    let mut lister =  bfp.api.accounts_rewards_all(stake_addr).take(BLOCKFROST_FETCH_MAX_ITEMS);
+    let mut lister = bfp
+        .api
+        .accounts_rewards_all(stake_addr)
+        .take(BLOCKFROST_FETCH_MAX_ITEMS);
     while let Some(n) = lister.next().await {
-        let n = n.map_err( |e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
+        let n = n.map_err(|e| DataProviderBlockfrostError::GeneralError(e.to_string()))?;
         if n.is_empty() {
             break;
         };
@@ -442,12 +465,13 @@ pub async fn retrieve_generated_rewards (
 
     debug!("AC: {:?}", account_rewards);
 
-    let r =  account_rewards.iter().map(|h|
-                                        RewardView {
-                                            amount: h.amount.parse::<u64>().unwrap_or(0),
-                                            earned_epoch: i64::try_from(h.epoch).unwrap_or(0),
-                                            spendable_epoch: i64::try_from(h.epoch+2).unwrap_or(0),
-                                        })
+    let r = account_rewards
+        .iter()
+        .map(|h| RewardView {
+            amount: h.amount.parse::<u64>().unwrap_or(0),
+            earned_epoch: i64::try_from(h.epoch).unwrap_or(0),
+            spendable_epoch: i64::try_from(h.epoch + 2).unwrap_or(0),
+        })
         .collect::<Vec<_>>();
 
     Ok(r)

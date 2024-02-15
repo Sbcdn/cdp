@@ -2,33 +2,34 @@ use std::str::from_utf8;
 
 use crate::dbsync::get_stake_address_utxos_dep;
 use crate::models::{AssetHandle, PoolView};
+use crate::provider::ProviderType;
 use crate::server::error::RESTError;
 use crate::server::filter::with_auth;
 use crate::server::handler::make_error;
 use crate::{models::TokenInfoView, provider::CardanoDataProvider};
-use crate::{DataProvider, DBSyncProvider, BlockfrostProvider};
-use crate::provider::ProviderType;
+use crate::{BlockfrostProvider, DBSyncProvider, DataProvider, DataProviderError};
 use ::log::debug;
 use cardano_serialization_lib::utils::from_bignum;
 use dcslc::{make_fingerprint, TransactionUnspentOutputs};
+use http::StatusCode;
 use rweb::*;
 use serde_json::json;
 
-fn get_cardano_data_provider() -> Box<dyn CardanoDataProvider> {
+fn get_cardano_data_provider() -> Result<Box<dyn CardanoDataProvider>, DataProviderError> {
     let provider = std::env::var("PROVIDER").unwrap();
     match provider.as_str() {
-        "blockfrost" => Box::new(
-            DataProvider::new(
-                BlockfrostProvider::new()
-            )
-        ),
-        "dbsync" => Box::new(
-            DataProvider::new(
-                DBSyncProvider::new(crate::Config {db_path: std::env::var("DBSYNC_URL").unwrap()})
-            )
-        ),
+        "blockfrost" => {
+            let provider = Box::new(DataProvider::new(BlockfrostProvider::new()?));
+            Ok(provider)
+        }
+        "dbsync" => {
+            let provider = Box::new(DataProvider::new(DBSyncProvider::new(crate::Config {
+                db_path: std::env::var("DBSYNC_URL").unwrap(),
+            })));
+            Ok(provider)
+        }
         // Panic as we never should reach this, config is validated
-        _ => panic!("Provider #{provider} not recognised")
+        _ => unreachable!("Provider #{provider} not recognised"),
     }
 }
 
@@ -46,7 +47,7 @@ pub async fn address_exists(
     let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses).unwrap();
     let addresses = addresses.iter_mut().map(|address| &address[..]).collect();
 
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
     let result = dp.addresses_exist(&addresses).await.unwrap();
 
     Ok(rweb::Json::from(json!(result)))
@@ -62,12 +63,12 @@ pub async fn utxos_per_addr(
     address: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
 
     let utxos = dp
         .script_utxos(&address)
         .await
-        .map_err(|e| RESTError::Custom(format!("Could not find UTxOs: {:?}",e)))?;
+        .map_err(|e| RESTError::Custom(format!("Could not find UTxOs: {:?}", e)))?;
 
     let result = serde_json::to_value(utxos.to_hex().unwrap())
         .map_err(|_| RESTError::Custom("db error, could not get utxos".to_string()))?;
@@ -99,8 +100,7 @@ pub async fn mint_metadata(
     fingerprint: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
 
     let metadata: TokenInfoView = match dp.mint_metadata(&fingerprint).await {
         Ok(metadata) => metadata,
@@ -139,7 +139,7 @@ pub async fn tx_history(
     #[query] slot: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
     let mut addresses: Vec<String> = parse_string_vec_from_query(&addresses).unwrap();
     let addresses = addresses.iter_mut().map(|address| &address[..]).collect();
 
@@ -213,7 +213,7 @@ pub(crate) async fn get_asset_for_addresses(
     addresses: &Vec<String>,
 ) -> Result<Vec<AssetHandle>, Rejection> {
     debug!("{addresses:?}");
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
 
     let mut utxos = TransactionUnspentOutputs::new();
 
@@ -425,7 +425,7 @@ pub async fn retrieve_active_pools(
     page: usize,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
     let pools_page = dp.active_pools(page).await.unwrap();
     Ok(rweb::Json::from(json!(pools_page)))
 }
@@ -464,7 +464,6 @@ pub async fn is_nft(
     #[query] fingerprints: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-
     // Return if provider is blockfrost, BF does not support fingerprint-based requests
     let provider = std::env::var("PROVIDER").unwrap();
     if provider.as_str() == "blockfrost" {
@@ -517,7 +516,7 @@ pub async fn retrieve_staked_amount(
     stake_addr: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
 
     dbg!(epoch.clone());
     dbg!(stake_addr.clone());
@@ -541,7 +540,7 @@ pub async fn retrieve_generated_rewards(
     stake_addr: String,
     #[filter = "with_auth"] _user_id: String,
 ) -> Result<Json<serde_json::Value>, Rejection> {
-    let dp = get_cardano_data_provider();
+    let dp = get_cardano_data_provider()?;
 
     let generated_rewards = dp
         .retrieve_generated_rewards(&stake_addr)

@@ -1,4 +1,5 @@
 use thiserror::Error;
+use warp::reject;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -21,6 +22,8 @@ pub enum DataProviderError {
     JSONError(#[from] serde_json::Error),
     #[error(transparent)]
     CSLCommonError(#[from] dcslc::error::CSLCommonError),
+    #[error(transparent)]
+    BlockFrostApiError(#[from] blockfrost::Error),
 }
 
 impl From<std::string::String> for DataProviderError {
@@ -40,3 +43,5 @@ impl From<cardano_serialization_lib::error::JsError> for DataProviderError {
         DataProviderError::Custom(err.to_string())
     }
 }
+
+impl reject::Reject for DataProviderError {}

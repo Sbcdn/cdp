@@ -144,20 +144,15 @@ impl Default for ChainWellKnownInfo {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 #[serde(tag = "type")]
 pub enum ChainConfig {
+    #[default]
     Mainnet,
     Testnet,
     PreProd,
     Preview,
     Custom(u64),
-}
-
-impl Default for ChainConfig {
-    fn default() -> Self {
-        Self::Mainnet
-    }
 }
 
 impl From<ChainConfig> for ChainWellKnownInfo {
@@ -201,28 +196,25 @@ pub struct ConfigRoot {
 
 impl ConfigRoot {
     pub fn new(explicit_file: &Option<std::path::PathBuf>) -> Result<Self, config::ConfigError> {
-        let mut s = config::Config::builder();
-
-        // but we can override it by having a file in the working dir
-        s = s.add_source(config::File::with_name("config.toml").required(false));
+        let mut s = config::Config::builder()
+            // but we can override it by having a file in the working dir
+            .add_source(config::File::with_name("config.toml").required(false));
 
         // if an explicit file was passed, then we load it as mandatory
         if let Some(explicit) = explicit_file.as_ref().and_then(|x| x.to_str()) {
             s = s.add_source(config::File::with_name(explicit).required(true));
         }
-
         // finally, we use env vars to make some last-step overrides
-        s = s.add_source(config::Environment::with_prefix("CONFIG").separator("_"));
-
-        s.build()?.try_deserialize()
+        s.add_source(config::Environment::with_prefix("CONFIG").separator("_"))
+            .build()?
+            .try_deserialize()
     }
 
     pub fn set_as_env(&self) {
-        match self.appconfigs.clone() {
-            appconfigs::Config::Nft(x) => std::env::set_var("ENNFT_POLICY", x.policy_id),
-            appconfigs::Config::None => {}
+        if let appconfigs::Config::Nft(x) = &self.appconfigs {
+            std::env::set_var("ENNFT_POLICY", x.policy_id.clone());
         }
-        std::env::set_var("PROVIDER", &self.connectivity.provider.as_str());
+        std::env::set_var("PROVIDER", self.connectivity.provider.as_str());
         std::env::set_var("DBSYNC_URL", &self.connectivity.dbsync_url);
         //std::env::set_var("BLOCKFROST_API_URL", &self.connectivity.blockfrost_api_url);
         //std::env::set_var("BLOCKFROST_PROJECT_ID", &self.connectivity.blockfrost_project_id);
@@ -242,8 +234,6 @@ mod connectivity {
         #[serde(deserialize_with = "ProviderType::deserialize_with")]
         pub provider: ProviderType,
         pub dbsync_url: String,
-        // pub blockfrost_api_url: String,
-        // pub blockfrost_project_id: String,
         pub submit_endpoint_1: String,
         pub submit_endpoint_2: String,
         pub submit_endpoint_3: String,

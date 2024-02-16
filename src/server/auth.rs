@@ -31,7 +31,7 @@ pub fn _create_jwt(uid: &str, role: &Role, expire: Option<i64>) -> Result<String
     };
     let header = Header::new(Algorithm::ES256);
     let key = JWT_SECRET_KEY.to_owned().into_bytes();
-    encode(&header, &claims, &EncodingKey::from_ec_pem(&key).unwrap())
+    encode(&header, &claims, &EncodingKey::from_ec_pem(&key)?)
         .map_err(|_| RESTError::JWTTokenCreationError)
 }
 

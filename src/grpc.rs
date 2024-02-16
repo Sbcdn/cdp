@@ -55,11 +55,7 @@ impl ChainFollowerRequestService for AyaCardanoRPCServer {
                         new_slot: resp.new_slot,
                         new_blockhash: resp.new_blockhash,
                         epoch_nonce: resp.epoch_nonce,
-                        extra_entropy: if let Some(s) = resp.extra_entropy {
-                            s
-                        } else {
-                            "".to_string()
-                        },
+                        extra_entropy: resp.extra_entropy.unwrap_or_default(),
                     })),
                 }
             }
